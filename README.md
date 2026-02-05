@@ -11,7 +11,7 @@ A Chrome extension that provides a horizontal, scrollable view of all open tabs 
 - **Real-time synchronization** with browser tab changes
 - **Visual indicators** for pinned tabs and audio playing
 
-image.png
+![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/image.png)
 
 ## Installation
 
