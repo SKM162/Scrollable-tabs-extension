@@ -53,7 +53,10 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 - fix scroll focus change after tab closing.
 - fix smooth scrolling
 - fix tabs not closing sometimes
-- better UI for tab menu options
+- fix unwanted spacings
+- fix loading of thumbnails at each start
+- fix group closing icons
+- better UI/UX for tab menu options
 - Light/dark theme support
 - new tab creation
 - tab search
