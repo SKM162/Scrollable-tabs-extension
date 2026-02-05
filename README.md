@@ -1,7 +1,7 @@
 # Scrollable-tabs-extension
 Chrome extension that mimics scrollable tab strip experimental feature of chrome.
 
-A Chrome extension that provides a horizontal, scrollable view of all open tabs in a popup window with multiple viewing modes.
+A Chrome extension that provides a horizontal, scrollable view of all open tabs in a popup window.
 
 ## Features
 
@@ -18,7 +18,7 @@ A Chrome extension that provides a horizontal, scrollable view of all open tabs 
 ## Installation
 
 ### Load Extension locally:
-
+https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top right)
 3. Click "Load unpacked"
@@ -30,7 +30,7 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 
 ### Keyboard Shortcuts
 
-- **Arrow Left/Right**: Navigate between tabs
+- **Arrow Left/Right**: Navigate to next or prev tab
 - **Home**: Jump to first tab
 - **End**: Jump to last tab
 - **Enter**: Close popup (tab already active)
@@ -59,6 +59,8 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 - tab search
 - AI tab organization
 - picture in picture handling
+
+## Contributions are welcomed!
 
 ## License
 
