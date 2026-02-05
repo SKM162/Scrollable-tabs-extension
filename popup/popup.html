@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Navigator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container" id="popupContainer">
+    <div class="header-bar">
+      <div class="header-actions">
+        <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+      </div>
+    </div>
+    <div class="tab-container" id="tabContainer">
+      <!-- Tabs will be rendered here -->
+    </div>
+    <div class="hover-actions-bar" id="hoverActionsBar">
+      <button class="hover-action-btn" id="hoverPinBtn" title="Pin/Unpin tab">📌</button>
+      <button class="hover-action-btn" id="hoverMuteBtn" title="Mute/Unmute tab">🔇</button>
+      <button class="hover-action-btn hover-action-btn-close" id="hoverCloseBtn" title="Close tab">×</button>
+    </div>
+    <div class="info-bar">
+      <div class="current-tab-info" id="currentTabInfo">
+        <div class="info-label">Current Tab</div>
+        <div class="current-tab-title" id="currentTabTitle">Loading...</div>
+        <div class="current-tab-url" id="currentTabUrl"></div>
+      </div>
+      <div class="hovered-tab-info" id="hoveredTabInfo">
+        <div class="info-label">Hovered</div>
+        <div class="hovered-tab-title" id="hoveredTabTitle"></div>
+        <div class="hovered-tab-url" id="hoveredTabUrl"></div>
+      </div>
+      <div class="tab-counter-wrapper">
+        <button class="nav-btn-inline" id="scrollFirstBtn" title="Scroll to first">⏮</button>
+        <button class="nav-btn-inline" id="scrollPageBackBtn" title="Scroll back one page">◀</button>
+        <button class="nav-btn-inline" id="scrollPageFwdBtn" title="Scroll forward one page">▶</button>
+        <button class="nav-btn-inline" id="scrollLastBtn" title="Scroll to last">⏭</button>
+        <div class="tab-counter" id="tabCounterWrapper" title="Go to current tab">
+          <span class="tab-counter-icon">📍</span>
+          <span id="tabCounter">On tab 0 of 0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

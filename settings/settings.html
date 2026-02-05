@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Navigator Settings</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <header>
+      <h1>Tab Navigator Settings</h1>
+    </header>
+    
+    <main>
+      <section class="settings-section">
+        <h2>View Settings</h2>
+        
+        <div class="setting-item">
+          <label for="popupWidth">Popup Width:</label>
+          <div class="slider-group">
+            <input type="range" id="popupWidth" min="400" max="800" step="50" value="800">
+            <span id="popupWidthValue">800</span>px
+          </div>
+        </div>
+        
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="showTitles">
+            Show tab titles
+          </label>
+        </div>
+        
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="showIndices">
+            Show tab counter (e.g., "Tab 4 of 6")
+          </label>
+        </div>
+      </section>
+      
+      <section class="settings-section">
+        <h2>Behavior</h2>
+        
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="autoCenter" checked>
+            Auto-center on active tab when popup opens
+          </label>
+        </div>
+        
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="keyboardNav" checked>
+            Enable keyboard navigation
+          </label>
+        </div>
+        
+        <div class="setting-item">
+          <label for="scrollSpeed">Mouse Wheel Scroll Speed:</label>
+          <div class="slider-group">
+            <input type="range" id="scrollSpeed" min="0.5" max="3" step="0.1" value="1.0">
+            <span id="scrollSpeedValue">1.0</span>x
+          </div>
+        </div>
+      </section>
+      
+      <div class="settings-actions">
+        <button id="saveBtn" class="btn btn-primary">Save Settings</button>
+        <button id="resetBtn" class="btn btn-secondary">Reset to Defaults</button>
+      </div>
+    </main>
+  </div>
+  
+  <script src="settings.js"></script>
+</body>
+</html>
