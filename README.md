@@ -13,6 +13,8 @@ A Chrome extension that provides a horizontal, scrollable view of all open tabs 
 
 ![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/image.png)
 
+
+
 ## Installation
 
 ### Load Extension locally:
