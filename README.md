@@ -38,16 +38,17 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 ### Current Status
 
 **Phase 1 (MVP) - ✅ Complete**
-- ✅ Basic popup with horizontal tab list
+- ✅ Base popup with horizontal tab list
 - ✅ Click to switch tabs
 - ✅ Auto-center on active tab
 - ✅ Real-time tab sync
 - ✅ Basic styling
+- ✅ Tab group support
 
 **Phase 2 - ✅ Complete**
-- ✅ navigation
-- ✅ basic settings
-- ✅ basic tab menu options (close, pin/unpin, mute/unmute)
+- ✅ Navigation
+- ✅ Basic settings (popup window size, auto focus on current tab, tab titles, current tab count)
+- ✅ Basic tab menu options (close, pin/unpin, mute/unmute)
 
 **Phase 3 - Pending**
 - fix scroll focus change after tab closing.
