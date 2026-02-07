@@ -12,11 +12,11 @@ body {
 
 .popup-container {
   width: 500px;
-  height: 280px;
+  height: 250px;
   max-width: 800px;
   max-height: 600px;
   min-width: 400px;
-  min-height: 220px;
+  min-height: 250px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -185,7 +185,7 @@ body {
   align-items: center;
   justify-content: flex-start;
   gap: 2px;
-  padding: 4px 3px;
+  padding: 4px 3px 16px 3px;
   background: #ffffff;
   border: 2px solid #e0e0e0;
   border-radius: 5px;
@@ -194,7 +194,42 @@ body {
   position: relative;
   width: 48px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  height: 50px;
+  height: 64px;
+}
+
+/* Tab dropdown button */
+.tab-dropdown-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 14px;
+  background: rgba(240, 240, 240, 0.95);
+  border: none;
+  border-top: 1px solid #d0d0d0;
+  border-radius: 0 0 3px 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: #666;
+  transition: background 0.15s ease;
+  z-index: 10;
+  padding: 0;
+  line-height: 1;
+}
+
+.tab-dropdown-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.tab-dropdown-btn.active {
+  background: #1a73e8;
+  border-top-color: #1a73e8;
+  color: white;
 }
 
 .tab-item:hover {
@@ -205,18 +240,22 @@ body {
 }
 
 /* While scrolling: no pointer events on content (hover never fires), no transitions or hover layout */
-.tab-container.is-scrolling > * {
+.tab-container.is-scrolling>* {
   pointer-events: none;
 }
+
 .tab-container.is-scrolling .tab-item {
   transition: none;
 }
+
 .tab-container.is-scrolling .tab-item:hover {
   transform: none;
 }
+
 .tab-container.is-scrolling .group-header:hover {
   background: transparent;
 }
+
 .tab-container.is-scrolling .collapsible-section:hover {
   background: rgba(240, 248, 255, 0.4);
 }
@@ -298,55 +337,6 @@ body {
   height: 12px;
   border-radius: 2px;
   border: 1px solid rgba(255, 255, 255, 0.8);
-}
-
-.hover-actions-bar {
-  display: none;
-  padding: 3px 8px;
-  background: #f0f0f0;
-  border-top: 2px solid #e0e0e0;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 99;
-  pointer-events: auto;
-  min-height: 32px;
-  margin: 0;
-}
-
-.hover-actions-bar.visible {
-  display: flex;
-}
-
-.hover-action-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid #e0e0e0;
-  background: #ffffff;
-  cursor: pointer;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  padding: 0;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  color: #333;
-}
-
-.hover-action-btn:hover {
-  background: #f5f5f5;
-  border-color: #c0c0c0;
-  transform: scale(1.1);
-}
-
-.hover-action-btn-close:hover {
-  background: #f44336;
-  border-color: #f44336;
-  color: white;
 }
 
 .info-bar {
@@ -459,24 +449,32 @@ body {
   gap: 6px;
   background: #1a73e8;
   color: white;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3);
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .tab-counter-icon {
   font-size: 12px;
-  line-height: 1;
+  line-height: 1.5;
   opacity: 0.95;
+  width: 18px;
+  height: 18px;
+}
+
+.tab-counter-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .tab-counter:hover {
   background: #1557b0;
+  transform: scale(1.02);
 }
 
 .header-bar {
@@ -545,4 +543,149 @@ body {
 .settings-btn:hover {
   background: #f5f5f5;
   border-color: #c0c0c0;
+}
+
+/* Tab dropdown button */
+.tab-dropdown-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 14px;
+  background: rgba(240, 240, 240, 0.95);
+  border: none;
+  border-top: 1px solid #d0d0d0;
+  border-radius: 0 0 3px 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: #666;
+  transition: background 0.15s ease;
+  z-index: 10;
+  padding: 0;
+  line-height: 1;
+}
+
+.tab-dropdown-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.tab-dropdown-btn.active {
+  background: #1a73e8;
+  border-top-color: #1a73e8;
+  color: white;
+}
+
+/* Dropdown menu bubble */
+.tab-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  background: white;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  display: none;
+  flex-direction: row;
+  gap: 4px;
+  z-index: 1000;
+  white-space: nowrap;
+  align-items: center;
+}
+
+/* Adjust position for tabs near the right edge */
+.tab-dropdown-menu.align-right {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* Adjust position for tabs near the left edge */
+.tab-dropdown-menu.align-left {
+  left: 0;
+  transform: none;
+}
+
+.tab-dropdown-menu.visible {
+  display: flex;
+}
+
+/* Arrow pointing up to the tab */
+.tab-dropdown-menu::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid white;
+}
+
+.tab-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid #d0d0d0;
+  margin-bottom: 1px;
+  z-index: -1;
+}
+
+/* Dropdown menu items */
+.tab-dropdown-item {
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  user-select: none;
+  min-width: 32px;
+  height: 32px;
+  position: relative;
+}
+
+.tab-dropdown-item:hover {
+  background: #f0f0f0;
+}
+
+.tab-dropdown-item.danger:hover {
+  background: #fee;
+  color: #d32f2f;
+}
+
+.tab-dropdown-item-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Hide text labels in horizontal layout, show only icons */
+.tab-dropdown-item span:not(.tab-dropdown-item-icon) {
+  display: none;
+}
+
+/* Dropdown divider */
+.tab-dropdown-divider {
+  width: 1px;
+  height: 24px;
+  background: #e0e0e0;
+  margin: 0 2px;
 }

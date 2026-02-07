@@ -3,6 +3,8 @@ Chrome extension that mimics scrollable tab strip experimental feature of chrome
 
 A Chrome extension that provides a horizontal, scrollable view of all open tabs in a popup window.
 
+Made with AI and human touch <3.
+
 ## Features
 
 - **Horizontal scrollable list** of all tabs
@@ -12,8 +14,6 @@ A Chrome extension that provides a horizontal, scrollable view of all open tabs 
 - **Visual indicators** for pinned tabs and audio playing
 
 ![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/image.png)
-
-
 
 ## Installation
 
@@ -50,14 +50,14 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 - ✅ Basic settings (popup window size, auto focus on current tab, tab titles, current tab count)
 - ✅ Basic tab menu options (close, pin/unpin, mute/unmute)
 
+**Phase 3 - ✅ Complete**
+- ✅ Better UI/UX for tab menu options
+
 **Phase 3 - Pending**
-- fix scroll focus change after tab closing.
+- fix scroll focus change after tab closing and tab not closing sometimes.
 - fix smooth scrolling
-- fix tabs not closing sometimes
-- fix unwanted spacings
 - fix loading of thumbnails at each start
 - fix group closing icons
-- better UI/UX for tab menu options
 - Light/dark theme support
 - new tab creation
 - tab search
@@ -65,6 +65,9 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 - picture in picture handling
 
 ## Contributions are welcomed!
+
+# Attributions
+Default thumbnail for tabs - By Sarang - Own work, Public Domain, https://commons.wikimedia.org/w/index.php?curid=18827703
 
 ## License
 

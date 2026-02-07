@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Scrollable Tabs",
   "version": "0.1.0",
-  "description": "Extension port of scrollable tab strip chrome experimental feature",
+  "description": "Extension port for scrollable tab strip experimental feature of chrome",
   "permissions": ["tabs", "storage", "tabGroups"],
   "action": {
     "default_popup": "popup/popup.html",
