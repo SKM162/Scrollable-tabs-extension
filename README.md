@@ -13,7 +13,7 @@ Made with AI and human touch <3.
 - **Real-time synchronization** with browser tab changes
 - **Visual indicators** for pinned tabs and audio playing
 
-![screenshot of extension]("https://github.com/SKM162/Scrollable-tabs-extension/blob/main/assets/Scrollable tab peek.png")
+![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/assets/Scrollable%20tab%20peek.png)
 
 ## Installation
 
