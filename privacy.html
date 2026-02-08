@@ -5,214 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy - Scrollable Tabs</title>
   <link rel="icon" type="image/png" href="assets/icons/icon16.png">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      --primary: #1a1a1a;
-      --primary-light: #333;
-      --bg: #fafafa;
-      --surface: #ffffff;
-      --text: #1a1a1a;
-      --text-muted: #666;
-      --text-light: #888;
-      --border: #e5e5e5;
-      --border-light: #f0f0f0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* Header */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border-light);
-      padding: 1.25rem 2rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .header-content {
-      max-width: 800px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .logo-link {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      text-decoration: none;
-      color: var(--primary);
-    }
-
-    .logo-link img {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-    }
-
-    .logo-text {
-      font-size: 1.15rem;
-      font-weight: 600;
-    }
-
-    .back-link {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: color 0.2s ease;
-    }
-
-    .back-link:hover {
-      color: var(--primary);
-    }
-
-    /* Main Content */
-    main {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 4rem 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 600;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-      letter-spacing: -0.01em;
-    }
-
-    .last-updated {
-      color: var(--text-light);
-      font-size: 0.9rem;
-      margin-bottom: 3rem;
-    }
-
-    .section {
-      margin-bottom: 2.5rem;
-    }
-
-    h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--primary);
-      margin-bottom: 1rem;
-    }
-
-    p {
-      color: var(--text-muted);
-      margin-bottom: 1rem;
-      font-size: 0.95rem;
-    }
-
-    ul {
-      margin-left: 1.5rem;
-      margin-bottom: 1rem;
-      color: var(--text-muted);
-    }
-
-    ul li {
-      margin-bottom: 0.5rem;
-      font-size: 0.95rem;
-    }
-
-    .highlight-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
-      margin: 1.5rem 0;
-    }
-
-    .highlight-box p {
-      margin: 0;
-      color: var(--text);
-    }
-
-    a {
-      color: var(--primary);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    a:hover {
-      color: var(--primary-light);
-    }
-
-    /* Footer */
-    footer {
-      padding: 2rem;
-      background: var(--surface);
-      border-top: 1px solid var(--border-light);
-      text-align: center;
-    }
-
-    .footer-content {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    .footer-links {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .footer-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-
-    .footer-links a:hover {
-      color: var(--primary);
-    }
-
-    .copyright {
-      color: var(--text-light);
-      font-size: 0.8rem;
-    }
-
-    /* Responsive */
-    @media (max-width: 600px) {
-      .header-content {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-      }
-
-      h1 {
-        font-size: 1.6rem;
-      }
-
-      main {
-        padding: 2.5rem 1.5rem;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="styles/privacy.css">
 </head>
 <body>
   <header>
     <div class="header-content">
       <a href="index.html" class="logo-link">
-        <img src="assets/icons/icon128.png" alt="Scrollable Tabs">
-        <span class="logo-text">Scrollable Tabs</span>
+        <div class="logo logo-small">
+          <img src="assets/icons/icon128.png" alt="Scrollable Tabs">
+        </div>
+        <span class="logo-text logo-text-small">Scrollable Tabs</span>
       </a>
       <a href="index.html" class="back-link">← Back to Home</a>
     </div>
@@ -244,7 +46,8 @@
 
     <div class="section">
       <h2>Information We Do NOT Collect</h2>
-      <p>We do not collect or have access to:</p>
+      <p>We do not collect or have access to data that is not related to the extension</p>
+      <p>To name a few:</p>
       <ul>
         <li>Personal identification information</li>
         <li>Browsing history</li>
@@ -293,12 +96,17 @@
 
   <footer>
     <div class="footer-content">
+      <div class="footer-logo">Scrollable Tabs</div>
+      <p class="footer-text">Made with AI and Human touch</p>
+      <p class="footer-text">
+        <svg width=40 height=40 viewBox="-25 -15 150 150" xmlns="http://www.w3.org/2000/svg" fill="#e14747" stroke="#e14747"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <defs> <style>.cls-1{fill:#ffffff;}</style> </defs> <g id="Layer_2" data-name="Layer 2"> <g id="Layer_1-2" data-name="Layer 1"> <path d="M51.31,27.71c3.14-4.32,5.57-7.81,8.14-11.18,3.41-4.48,8.16-7.16,13.23-9.25A13.76,13.76,0,0,1,78.5,6.22c8.49.52,16.2,8,17.14,16.56,1.14,10.28-1.35,20-5.58,29.15A156.23,156.23,0,0,1,70.73,84.24c-6.9,8.67-14.2,17.12-18.87,27.35-1.77,3.89-3.5,7.8-5.28,11.68a5.53,5.53,0,0,1-9.68,1.09A13.66,13.66,0,0,1,35,120.52c-4.77-14.21-12.35-27.06-19.62-40-5.07-9-9.77-18.2-12.59-28.13C-.75,39.72-1.63,26.93,4.32,14.62a35.18,35.18,0,0,1,6.19-9.16A17.46,17.46,0,0,1,31.8,2.27c9,5.18,16.1,11.83,18.41,22.46A28.62,28.62,0,0,0,51.31,27.71ZM47.89,50.89c-.61-.76-1.68-1.52-2-2.51-1.31-4.67-3.16-9.37-3.4-14.12-.46-9.08-4.81-15.65-11.4-21.2-5.58-4.71-10.79-4-15.29,2C11.1,21.33,10,28.51,10.39,36.13c.46,9.64,3.68,18.52,8,26.95,6.1,12,12.57,23.76,19,35.52,1.45,2.64,2.07,5.9,5.69,8.77.67-1.22,1.14-2.25,1.76-3.18,4.46-6.62,8.9-13.26,13.43-19.83S67.79,71.45,72,64.67c5-8,9.38-16.4,11.76-25.61,1.13-4.4,2.51-9,2.27-13.44-.51-9.44-5.55-12.23-13.72-7A32.7,32.7,0,0,0,61.14,31.37c-2.6,5.07-5,10.27-7.12,15.55C52.87,49.79,51,50.86,47.89,50.89Z"></path> </g> </g> </g></svg>
+      </p>
       <div class="footer-links">
-        <a href="index.html">Home</a>
         <a href="https://github.com/SKM162/Scrollable-tabs-extension">GitHub</a>
-        <a href="LICENSE">License</a>
+        <a href="#">Chrome Web Store</a>
+        <a href="LICENSE.txt">License</a>
       </div>
-      <p class="copyright">MIT License © 2025</p>
+      <p class="copyright">Apache License 2.0 © 2025</p>
     </div>
   </footer>
 </body>
