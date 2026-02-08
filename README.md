@@ -1,5 +1,5 @@
 # Scrollable-tabs-extension
-Chrome extension that mimics scrollable tab strip experimental feature of chrome.
+Chrome extension that mimics scrollable tab strip experimental feature of chrome (chrome://flags/#scrollable-tabstrip).
 
 A Chrome extension that provides a horizontal, scrollable view of all open tabs in a popup window.
 
