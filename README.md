@@ -28,41 +28,36 @@ https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#lo
 
 Click the extension icon in the Chrome toolbar to open the tab navigator popup. The active tab will be automatically be focussed.
 
-### Keyboard Shortcuts
 
-- **Arrow Left/Right**: Navigate to next or prev tab
-- **Home**: Jump to first tab
-- **End**: Jump to last tab
-- **Enter**: Close popup (tab already active)
-
-### Current Status
+### Current Status (will be removed once stable at basic level.)
 
 **Phase 1 (MVP) - ✅ Complete**
-- ✅ Base popup with horizontal tab list
-- ✅ Click to switch tabs
-- ✅ Auto-center on active tab
-- ✅ Real-time tab sync
-- ✅ Basic styling
-- ✅ Tab group support
+- Base popup with horizontal tab list
+- Click to switch tabs
+- Auto-center on active tab
+- Real-time tab sync
+- Tab group support
 
 **Phase 2 - ✅ Complete**
-- ✅ Navigation
-- ✅ Basic settings (popup window size, auto focus on current tab, tab titles, current tab count)
-- ✅ Basic tab menu options (close, pin/unpin, mute/unmute)
+- Navigation
+- Basic settings (popup window size, auto focus on current tab, tab titles, current tab count)
+- Basic tab menu options (close, pin/unpin, mute/unmute)
 
 **Phase 3 - ✅ Complete**
-- ✅ Better UI/UX for tab menu options
-
-**Phase 3 - Pending**
+- Better UI/UX for tab menu options
 - fix scroll focus change after tab closing and tab not closing sometimes.
 - fix smooth scrolling
-- fix loading of thumbnails at each start
+- fix loading of thumbnails at each start, caching implemented.
 - fix group closing icons
 - Light/dark theme support
 - new tab creation
+- fix picture in picture handling (tab's pip status not supported by chrome.). fixed audio playing indication.
+
+**Phase 4:**
+- tab reordering
 - tab search
 - AI tab organization
-- picture in picture handling
+
 
 ## Contributions are welcomed!
 
