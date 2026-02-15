@@ -1,6 +1,17 @@
 /** @fileoverview UI utilities and color helpers */
 
-import { CHROME_GROUP_COLORS, CLASSES, MESSAGE_DURATION } from './constants.js';
+import { CHROME_GROUP_COLORS, CLASSES, MESSAGE_DURATION, ICONS } from './constants.js';
+
+/**
+ * Set icon on an element from ICONS constant
+ * @param {HTMLElement} element - Target element (usually a button)
+ * @param {string} iconName - Name of the icon in ICONS object
+ */
+export function setIcon(element, iconName) {
+  if (element && ICONS[iconName]) {
+    element.innerHTML = ICONS[iconName];
+  }
+}
 
 /**
  * Convert hex color to RGB object
@@ -120,6 +131,58 @@ export function getHostname(url) {
   }
 }
 
+// In-memory favicon cache to deduplicate icons by using the same URL
+// This relies on browser's natural caching instead of manual fetching (avoids CORS)
+const faviconUrlCache = new Map();
+
+/**
+ * Extract base favicon URL (without cache-busting parameters)
+ * @param {string} faviconUrl - URL with possible cache-busting
+ * @returns {string} Base URL
+ */
+function getBaseFaviconUrl(faviconUrl) {
+  if (!faviconUrl) return '';
+  try {
+    const url = new URL(faviconUrl);
+    // Keep the URL but remove timestamp/cache params that change per tab
+    const searchParams = new URLSearchParams(url.search);
+    // Remove common cache-busting params added by Chrome or the extension
+    ['t', 'v', 'cb', '_'].forEach(param => searchParams.delete(param));
+    url.search = searchParams.toString();
+    return url.toString();
+  } catch {
+    return faviconUrl;
+  }
+}
+
+/**
+ * Get cached favicon URL - returns the same URL for identical favicons
+ * This allows browser to naturally cache and reuse the image
+ * @param {string} faviconUrl - Original favicon URL from tab
+ * @returns {string} Deduplicated URL for browser caching
+ */
+export function getCachedFaviconUrl(faviconUrl) {
+  const baseUrl = getBaseFaviconUrl(faviconUrl);
+  
+  // If we've seen this favicon before, return the cached URL
+  if (faviconUrlCache.has(baseUrl)) {
+    return faviconUrlCache.get(baseUrl);
+  }
+  
+  // First time seeing this favicon, store and return the base URL
+  faviconUrlCache.set(baseUrl, baseUrl);
+  return baseUrl;
+}
+
+/**
+ * Preload favicon - no-op since we rely on browser caching now
+ * Kept for API compatibility
+ * @param {string} faviconUrl - Favicon URL to preload
+ */
+export function preloadFavicon(faviconUrl) {
+  // No-op: browser handles caching naturally when same URL is used
+}
+
 /**
  * Cache-bust a favicon URL
  * @param {string} faviconUrl - Original favicon URL
@@ -127,6 +190,23 @@ export function getHostname(url) {
  * @returns {string} Cache-busted URL
  */
 export function cacheBustFavicon(faviconUrl, tabId) {
+  // Validate URL
+  if (!faviconUrl || typeof faviconUrl !== 'string') {
+    return chrome.runtime.getURL('assets/default-favicon.svg');
+  }
+  
+  // Don't cache-bust local file URLs or chrome-extension URLs
+  if (faviconUrl.startsWith('file://') || faviconUrl.startsWith('chrome-extension://')) {
+    return faviconUrl;
+  }
+  
+  // Handle URLs that might be invalid
+  try {
+    new URL(faviconUrl);
+  } catch {
+    return chrome.runtime.getURL('assets/default-favicon.svg');
+  }
+  
   const sep = faviconUrl.includes('?') ? '&' : '?';
   return `${faviconUrl}${sep}t=${tabId}-${Date.now()}`;
 }

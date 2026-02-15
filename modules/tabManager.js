@@ -1,7 +1,7 @@
 /** @fileoverview Tab management and rendering */
 
-import { CLASSES } from './constants.js';
-import { createElement, resolveGroupColor, cacheBustFavicon, getHostname } from './uiUtils.js';
+import { CLASSES, ICONS } from './constants.js';
+import { createElement, resolveGroupColor, getCachedFaviconUrl, getHostname } from './uiUtils.js';
 import { createDropdownMenu } from './dropdownManager.js';
 
 /**
@@ -17,6 +17,7 @@ export class TabManager {
     this.onTabHoverEnd = options.onTabHoverEnd || (() => {});
     this.onDropdownAction = options.onDropdownAction || (() => {});
     this.isFirstRender = true;
+    this._groupInfoCache = new Map();
   }
 
   /**
@@ -24,11 +25,17 @@ export class TabManager {
    */
   async fetchTabs() {
     try {
-      this.tabs = await chrome.tabs.query({ currentWindow: true });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tab query timeout')), 5000)
+      );
+      this.tabs = await Promise.race([
+        chrome.tabs.query({ currentWindow: true }),
+        timeoutPromise
+      ]);
       return this.tabs;
     } catch (error) {
       console.error('Error fetching tabs:', error);
-      return [];
+      return this.tabs || [];
     }
   }
 
@@ -90,6 +97,7 @@ export class TabManager {
    * @returns {HTMLElement|null}
    */
   findTabElement(tabId) {
+    if (typeof tabId !== 'number') return null;
     return this.container.querySelector(`[data-tab-id="${tabId}"]`);
   }
 
@@ -194,10 +202,12 @@ export class TabManager {
     if (ungroupedTabs.length > 0) {
       const section = await this._createGroupSection('ungrouped', ungroupedTabs, 'Other Tabs', false);
       this.container.appendChild(section);
+      ungroupedTabs.length = 0; // Clear the array
     }
     if (groupTabs.length > 0) {
       const section = await this._createGroupSection(groupId, groupTabs, `Group ${groupId}`, false);
       this.container.appendChild(section);
+      groupTabs.length = 0; // Clear the array
     }
   }
 
@@ -212,7 +222,13 @@ export class TabManager {
 
     if (!isPinned && groupTabs.length > 0 && groupTabs[0].groupId && chrome.tabGroups) {
       try {
-        const groupInfo = await chrome.tabGroups.get(groupTabs[0].groupId);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Group query timeout')), 3000)
+        );
+        const groupInfo = await Promise.race([
+          this._fetchGroupInfo(groupTabs[0].groupId),
+          timeoutPromise
+        ]);
         if (groupInfo) {
           groupTitle = groupInfo.title || label;
           groupColor = groupInfo.color;
@@ -224,7 +240,7 @@ export class TabManager {
           }
         }
       } catch (e) {
-        // Tab groups API not available
+        // Tab groups API not available or timeout
       }
     }
 
@@ -245,28 +261,39 @@ export class TabManager {
 
   _createSectionHeader(title, count, isPinned, section) {
     if (isPinned) {
-      return createElement('div', {
-        className: `${CLASSES.GROUP_HEADER} ${CLASSES.GROUP_HEADER_PINNED}`,
-        innerHTML: `
-          <span class="group-label">${title}</span>
-          <span class="group-count">${count}</span>
-        `
+      const header = createElement('div', {
+        className: `${CLASSES.GROUP_HEADER} ${CLASSES.GROUP_HEADER_PINNED}`
       });
+      header.appendChild(createElement('span', {
+        className: 'group-label',
+        textContent: title
+      }));
+      header.appendChild(createElement('span', {
+        className: 'group-count',
+        textContent: count.toString()
+      }));
+      return header;
     }
 
     const header = createElement('div', {
-      className: CLASSES.GROUP_HEADER,
-      innerHTML: `
-        <span class="group-label">${title}</span>
-        <span class="group-count">${count}</span>
-        <button class="collapse-btn">◀</button>
-      `
+      className: CLASSES.GROUP_HEADER
     });
+
+    const label = createElement('span', { className: 'group-label', textContent: title });
+    const countSpan = createElement('span', { className: 'group-count', textContent: count.toString() });
+    const collapseBtn = createElement('button', {
+      className: 'collapse-btn',
+      textContent: '◀'
+    });
+
+    header.appendChild(label);
+    header.appendChild(countSpan);
+    header.appendChild(collapseBtn);
 
     header.addEventListener('click', () => {
       section.classList.toggle(CLASSES.COLLAPSED);
       const btn = header.querySelector('.collapse-btn');
-      btn.textContent = section.classList.contains(CLASSES.COLLAPSED) ? '◀' : '▼';
+      btn.textContent = section.classList.contains(CLASSES.COLLAPSED) ? '▼' : '◀';
     });
 
     return header;
@@ -330,12 +357,18 @@ export class TabManager {
       className: CLASSES.FAVICON
     });
 
-    const faviconUrl = tab.favIconUrl && !tab.favIconUrl.startsWith('chrome://')
+    const faviconUrl = tab.favIconUrl && 
+      !tab.favIconUrl.startsWith('chrome://') &&
+      !tab.favIconUrl.startsWith('chrome-extension://') &&
+      !tab.favIconUrl.startsWith('data:') &&
+      tab.favIconUrl.length > 0 &&
+      tab.favIconUrl.length < 2048
       ? tab.favIconUrl
       : null;
 
     if (faviconUrl) {
-      favicon.src = cacheBustFavicon(faviconUrl, tab.id);
+      favicon.src = getCachedFaviconUrl(faviconUrl);
+      
       favicon.onerror = () => {
         favicon.src = chrome.runtime.getURL('assets/default-favicon.svg');
       };
@@ -346,17 +379,29 @@ export class TabManager {
     return favicon;
   }
 
-  _addGroupIndicator(div, tab) {
+  async _fetchGroupInfo(groupId) {
+    if (this._groupInfoCache.has(groupId)) {
+      return this._groupInfoCache.get(groupId);
+    }
+    try {
+      const groupInfo = await chrome.tabGroups.get(groupId);
+      this._groupInfoCache.set(groupId, groupInfo);
+      return groupInfo;
+    } catch {
+      return null;
+    }
+  }
+
+  async _addGroupIndicator(div, tab) {
     if (tab.groupId && tab.groupId !== chrome.tabs.TAB_ID_NONE && chrome.tabGroups) {
-      chrome.tabGroups.get(tab.groupId).then(groupInfo => {
-        if (groupInfo) {
-          const resolved = resolveGroupColor(groupInfo.color) || resolveGroupColor('blue');
-          if (resolved) {
-            div.dataset.groupColor = resolved.hex;
-            div.dataset.groupTitle = groupInfo.title || 'Untitled';
-          }
+      const groupInfo = await this._fetchGroupInfo(tab.groupId);
+      if (groupInfo) {
+        const resolved = resolveGroupColor(groupInfo.color) || resolveGroupColor('blue');
+        if (resolved) {
+          div.dataset.groupColor = resolved.hex;
+          div.dataset.groupTitle = groupInfo.title || 'Untitled';
         }
-      }).catch(() => { });
+      }
     }
   }
 
@@ -364,7 +409,7 @@ export class TabManager {
     if (tab.pinned) {
       div.appendChild(createElement('span', {
         className: `${CLASSES.INDICATOR} ${CLASSES.PIN_INDICATOR}`,
-        textContent: '📌',
+        innerHTML: ICONS.PIN,
         attributes: { title: 'Pinned' }
       }));
     }
@@ -372,16 +417,8 @@ export class TabManager {
     if (tab.audible) {
       div.appendChild(createElement('span', {
         className: `${CLASSES.INDICATOR} ${CLASSES.AUDIO_INDICATOR}`,
-        textContent: '🔊',
+        innerHTML: ICONS.UNMUTE,
         attributes: { title: 'Audio playing' }
-      }));
-    }
-
-    if (tab.audible && tab.mutedInfo && !tab.mutedInfo.muted) {
-      div.appendChild(createElement('span', {
-        className: `${CLASSES.INDICATOR} ${CLASSES.PIP_INDICATOR}`,
-        textContent: '📺',
-        attributes: { title: 'Picture-in-Picture' }
       }));
     }
   }

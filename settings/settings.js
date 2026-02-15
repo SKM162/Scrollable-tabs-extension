@@ -9,7 +9,8 @@ const DEFAULT_SETTINGS = {
   showIndices: true,
   autoCenter: true,
   keyboardNav: true,
-  scrollSpeed: 1.0
+  scrollSpeed: 1.0,
+  theme: 'auto'
 };
 
 class SettingsManager {
@@ -36,6 +37,7 @@ class SettingsManager {
       keyboardNav: document.getElementById('keyboardNav'),
       scrollSpeed: document.getElementById('scrollSpeed'),
       scrollSpeedValue: document.getElementById('scrollSpeedValue'),
+      theme: document.getElementById('theme'),
       saveBtn: document.getElementById('saveBtn'),
       resetBtn: document.getElementById('resetBtn')
     };
@@ -50,6 +52,9 @@ class SettingsManager {
   }
 
   populateForm() {
+    // Theme
+    this.elements.theme.value = this.currentSettings.theme || 'auto';
+    
     // Popup width
     this.elements.popupWidth.value = this.currentSettings.popupWidth;
     this.elements.popupWidthValue.textContent = this.currentSettings.popupWidth;
@@ -87,7 +92,8 @@ class SettingsManager {
       showIndices: this.elements.showIndices.checked,
       autoCenter: this.elements.autoCenter.checked,
       keyboardNav: this.elements.keyboardNav.checked,
-      scrollSpeed: parseFloat(this.elements.scrollSpeed.value)
+      scrollSpeed: parseFloat(this.elements.scrollSpeed.value),
+      theme: this.elements.theme.value
     };
     
     try {

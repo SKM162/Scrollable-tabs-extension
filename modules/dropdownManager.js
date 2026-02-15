@@ -29,12 +29,6 @@ export function createDropdownMenu(tab, onAction) {
     },
     { divider: true },
     {
-      action: DROPDOWN_ACTIONS.DUPLICATE,
-      icon: ICONS.DUPLICATE_TAB,
-      label: 'Duplicate',
-      title: 'Duplicate tab'
-    },
-    {
       action: DROPDOWN_ACTIONS.RELOAD,
       icon: ICONS.RELOAD_TAB,
       label: 'Reload',
@@ -48,12 +42,30 @@ export function createDropdownMenu(tab, onAction) {
     },
     { divider: true },
     {
+      action: DROPDOWN_ACTIONS.DUPLICATE,
+      icon: ICONS.DUPLICATE_TAB,
+      label: 'Duplicate',
+      title: 'Duplicate tab'
+    },
+    {
+      action: DROPDOWN_ACTIONS.NEW_TAB_LEFT,
+      icon: ICONS.NEW_TAB_LEFT,
+      label: 'New Tab to Left',
+      title: 'Open new tab to the left'
+    },
+    {
+      action: DROPDOWN_ACTIONS.NEW_TAB_RIGHT,
+      icon: ICONS.NEW_TAB_RIGHT,
+      label: 'New Tab to Right',
+      title: 'Open new tab to the right'
+    },
+    { divider: true },
+    {
       action: DROPDOWN_ACTIONS.NEW_WINDOW,
-      icon: ICONS.OPEN_IN_NEWTAB,
+      icon: ICONS.OPEN_IN_NEW_WINDOW,
       label: 'Move to New Window',
       title: 'Move tab to new window'
     },
-    { divider: true },
     {
       action: DROPDOWN_ACTIONS.CLOSE,
       icon: '×',
@@ -71,12 +83,19 @@ export function createDropdownMenu(tab, onAction) {
     } else {
       const menuItem = createElement('div', {
         className: `${CLASSES.TAB_DROPDOWN_ITEM}${item.danger ? ` ${CLASSES.DANGER}` : ''}`,
-        attributes: { 'data-action': item.action, title: item.title },
-        innerHTML: `
-          <span class="${CLASSES.TAB_DROPDOWN_ITEM}-icon">${item.icon}</span>
-          <span>${item.label}</span>
-        `
+        attributes: { 'data-action': item.action, title: item.title }
       });
+      
+      const iconSpan = createElement('span', {
+        className: `${CLASSES.TAB_DROPDOWN_ITEM}-icon`,
+        innerHTML: item.icon
+      });
+      const labelSpan = createElement('span', {
+        textContent: item.label
+      });
+      
+      menuItem.appendChild(iconSpan);
+      menuItem.appendChild(labelSpan);
       
       menuItem.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -202,6 +221,18 @@ export async function handleDropdownAction(action, tab) {
       } catch (err) {
         console.error('Failed to copy URL:', err);
       }
+      break;
+    case DROPDOWN_ACTIONS.NEW_TAB_RIGHT:
+      await chrome.tabs.create({ 
+        windowId: tab.windowId,
+        index: tab.index + 1 
+      });
+      break;
+    case DROPDOWN_ACTIONS.NEW_TAB_LEFT:
+      await chrome.tabs.create({ 
+        windowId: tab.windowId,
+        index: tab.index 
+      });
       break;
     case DROPDOWN_ACTIONS.NEW_WINDOW:
       await chrome.windows.create({ tabId: tab.id });

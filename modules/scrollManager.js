@@ -8,14 +8,18 @@ import { SCROLL_CONFIG, CLASSES } from './constants.js';
 export class ScrollManager {
   constructor(tabContainer, options = {}) {
     this.tabContainer = tabContainer;
-    this.scrollSpeed = options.scrollSpeed || 1.0;
+    this.scrollSpeed = options.scrollSpeed || 5.0;
     this.onScrollStart = options.onScrollStart || (() => {});
     this.onScrollEnd = options.onScrollEnd || (() => {});
-    
+
     this.scrollPriorityTimeout = null;
     this.lastScrollLeft = 0;
     this._boundHandleScroll = this._handleScroll.bind(this);
     this._boundHandleWheel = this._handleWheel.bind(this);
+
+    // Wheel scroll batching
+    this._pendingDelta = 0;
+    this._scrollPending = false;
   }
 
   /**
@@ -186,10 +190,24 @@ export class ScrollManager {
   }
 
   _handleWheel(e) {
-    this.setScrollingPriority();
-    if (e.deltaY !== 0) {
-      e.preventDefault();
-      this.tabContainer.scrollLeft += e.deltaY * this.scrollSpeed;
+    e.preventDefault();
+    
+    // Get scroll delta (prefer X for trackpads, fall back to Y)
+    const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+    
+    // Accumulate delta for smooth batching
+    this._pendingDelta = (this._pendingDelta || 0) + delta;
+    
+    // Schedule scroll update
+    if (!this._scrollPending) {
+      this._scrollPending = true;
+      requestAnimationFrame(() => {
+        this._scrollPending = false;
+        if (this._pendingDelta) {
+          this.tabContainer.scrollLeft += this._pendingDelta * this.scrollSpeed * 5;
+          this._pendingDelta = 0;
+        }
+      });
     }
   }
 }
@@ -197,7 +215,7 @@ export class ScrollManager {
 /**
  * Save scroll position anchor
  * @param {HTMLElement} container - Scrollable container
- * @returns {{tabId: string|null, offsetX: number, offsetY: number}} Anchor data
+ * @returns {{tabId: string|null, offsetX: number, offsetY: number, scrollLeft: number, scrollTop: number}} Anchor data
  */
 export function saveScrollAnchor(container) {
   const savedScrollLeft = container.scrollLeft;
@@ -208,14 +226,19 @@ export function saveScrollAnchor(container) {
   let offsetInAnchorX = 0;
   let offsetInAnchorY = 0;
 
-  for (const el of container.querySelectorAll('[data-tab-id]')) {
+  // Find the first visible tab as the anchor
+  const allTabs = Array.from(container.querySelectorAll('[data-tab-id]'));
+  
+  for (const el of allTabs) {
     const r = el.getBoundingClientRect();
     const contentLeft = r.left - containerRect.left + savedScrollLeft;
     const contentTop = r.top - containerRect.top + savedScrollTop;
     
-    if (contentLeft + r.width >= savedScrollLeft && contentTop + r.height >= savedScrollTop &&
-        contentLeft <= savedScrollLeft + container.clientWidth && 
-        contentTop <= savedScrollTop + container.clientHeight) {
+    // Check if tab is visible in the viewport
+    if (contentLeft + r.width > savedScrollLeft && 
+        contentTop + r.height > savedScrollTop &&
+        contentLeft < savedScrollLeft + container.clientWidth && 
+        contentTop < savedScrollTop + container.clientHeight) {
       anchorTabId = el.dataset.tabId;
       offsetInAnchorX = savedScrollLeft - contentLeft;
       offsetInAnchorY = savedScrollTop - contentTop;
@@ -223,25 +246,35 @@ export function saveScrollAnchor(container) {
     }
   }
 
-  if (!anchorTabId) {
-    let best = null;
-    let bestDist = Infinity;
+  // If no visible tab found, use the tab closest to the viewport
+  if (!anchorTabId && allTabs.length > 0) {
+    let bestTab = null;
+    let bestDistance = Infinity;
     
-    for (const el of container.querySelectorAll('[data-tab-id]')) {
+    for (const el of allTabs) {
       const r = el.getBoundingClientRect();
       const contentLeft = r.left - containerRect.left + savedScrollLeft;
       const contentTop = r.top - containerRect.top + savedScrollTop;
-      const dist = Math.max(0, contentTop - savedScrollTop) + Math.max(0, contentLeft - savedScrollLeft);
       
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = el;
+      // Calculate distance from viewport
+      const distX = contentLeft < savedScrollLeft 
+        ? savedScrollLeft - (contentLeft + r.width)
+        : contentLeft - (savedScrollLeft + container.clientWidth);
+      const distY = contentTop < savedScrollTop
+        ? savedScrollTop - (contentTop + r.height)
+        : contentTop - (savedScrollTop + container.clientHeight);
+      
+      const distance = Math.max(0, distX) + Math.max(0, distY);
+      
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestTab = el;
       }
     }
     
-    if (best) {
-      anchorTabId = best.dataset.tabId;
-      const r = best.getBoundingClientRect();
+    if (bestTab) {
+      anchorTabId = bestTab.dataset.tabId;
+      const r = bestTab.getBoundingClientRect();
       const contentLeft = r.left - containerRect.left + savedScrollLeft;
       const contentTop = r.top - containerRect.top + savedScrollTop;
       offsetInAnchorX = savedScrollLeft - contentLeft;
@@ -249,30 +282,87 @@ export function saveScrollAnchor(container) {
     }
   }
 
-  return { tabId: anchorTabId, offsetX: offsetInAnchorX, offsetY: offsetInAnchorY };
+  return { tabId: anchorTabId, offsetX: offsetInAnchorX, offsetY: offsetInAnchorY, scrollLeft: savedScrollLeft, scrollTop: savedScrollTop };
 }
 
 /**
  * Restore scroll position from anchor
  * @param {HTMLElement} container - Scrollable container
- * @param {{tabId: string|null, offsetX: number, offsetY: number}} anchor - Anchor data
+ * @param {{tabId: string|null, offsetX: number, offsetY: number, scrollLeft: number, scrollTop: number}} anchor - Anchor data
  */
 export function restoreScrollAnchor(container, anchor) {
-  if (!anchor.tabId) {
+  if (!anchor || (!anchor.tabId && anchor.scrollLeft === undefined)) {
     return;
   }
 
-  const anchorEl = container.querySelector(`[data-tab-id="${anchor.tabId}"]`);
-  if (anchorEl) {
+  const maxL = Math.max(0, container.scrollWidth - container.clientWidth);
+  const maxT = Math.max(0, container.scrollHeight - container.clientHeight);
+
+  // First try to restore using the anchor tab
+  if (anchor.tabId) {
+    const anchorEl = container.querySelector(`[data-tab-id="${anchor.tabId}"]`);
+    if (anchorEl) {
+      const containerRect = container.getBoundingClientRect();
+      const r = anchorEl.getBoundingClientRect();
+      const contentLeft = r.left - containerRect.left + container.scrollLeft;
+      const contentTop = r.top - containerRect.top + container.scrollTop;
+      const newScrollLeft = Math.max(0, Math.min(contentLeft - anchor.offsetX, maxL));
+      const newScrollTop = Math.max(0, Math.min(contentTop - anchor.offsetY, maxT));
+      
+      container.scrollTo({
+        left: newScrollLeft,
+        top: newScrollTop,
+        behavior: 'auto'
+      });
+      return;
+    }
+  }
+
+  // Anchor tab not found - try to find closest tab to original position
+  const allTabs = Array.from(container.querySelectorAll('[data-tab-id]'));
+  if (allTabs.length > 0 && anchor.scrollLeft !== undefined) {
     const containerRect = container.getBoundingClientRect();
-    const r = anchorEl.getBoundingClientRect();
-    const contentLeft = r.left - containerRect.left + container.scrollLeft;
-    const contentTop = r.top - containerRect.top + container.scrollTop;
-    const newScrollLeft = contentLeft - anchor.offsetX;
-    const newScrollTop = contentTop - anchor.offsetY;
-    const maxL = Math.max(0, container.scrollWidth - container.clientWidth);
-    const maxT = Math.max(0, container.scrollHeight - container.clientHeight);
-    container.scrollLeft = Math.max(0, Math.min(newScrollLeft, maxL));
-    container.scrollTop = Math.max(0, Math.min(newScrollTop, maxT));
+    const originalViewportLeft = anchor.scrollLeft;
+    const originalViewportTop = anchor.scrollTop;
+    
+    let bestTab = null;
+    let bestDistance = Infinity;
+
+    for (const tab of allTabs) {
+      const r = tab.getBoundingClientRect();
+      const contentLeft = r.left - containerRect.left + container.scrollLeft;
+      const contentTop = r.top - containerRect.top + container.scrollTop;
+      
+      // Distance from where the viewport was
+      const distance = Math.abs(contentLeft - originalViewportLeft) + 
+                      Math.abs(contentTop - originalViewportTop);
+      
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestTab = { el: tab, contentLeft, contentTop };
+      }
+    }
+
+    if (bestTab) {
+      // Restore relative to the best matching tab
+      const newScrollLeft = Math.max(0, Math.min(bestTab.contentLeft - anchor.offsetX, maxL));
+      const newScrollTop = Math.max(0, Math.min(bestTab.contentTop - anchor.offsetY, maxT));
+      
+      container.scrollTo({
+        left: newScrollLeft,
+        top: newScrollTop,
+        behavior: 'auto'
+      });
+      return;
+    }
+  }
+
+  // Fallback to absolute scroll position
+  if (anchor.scrollLeft !== undefined || anchor.scrollTop !== undefined) {
+    container.scrollTo({
+      left: Math.max(0, Math.min(anchor.scrollLeft || 0, maxL)),
+      top: Math.max(0, Math.min(anchor.scrollTop || 0, maxT)),
+      behavior: 'auto'
+    });
   }
 }
