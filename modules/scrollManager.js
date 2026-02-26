@@ -39,6 +39,7 @@ export class ScrollManager {
     this.tabContainer.removeEventListener('wheel', this._boundHandleWheel);
     if (this.scrollPriorityTimeout) {
       clearTimeout(this.scrollPriorityTimeout);
+      this.scrollPriorityTimeout = null;
     }
   }
 
