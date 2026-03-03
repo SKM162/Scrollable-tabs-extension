@@ -17,17 +17,21 @@ Made with AI and human touch <3.
 
 ## Installation
 
+Get it from [Chrome web store](https://chromewebstore.google.com/detail/scrollable-tabs/beneiafglkilogdikodimmbmnkbpnnba)
+
+OR
+
 ### Load Extension locally:
-https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked
+Official reference: https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked
+1. Clone or download and extract the repository.
 1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable "Developer mode" (toggle in top right)
-3. Click "Load unpacked"
-4. Select the extension directory
+2. Enable "Developer mode" (toggle icon at top right)
+3. Click "Load unpacked" (at top left)
+4. Select the extension directory cloned or downloaded.
 
 ## Usage
 
 Click the extension icon in the Chrome toolbar to open the tab navigator popup. The active tab will be automatically be focussed.
-
 
 ### Current Status (will be removed once stable at basic level.)
 
@@ -58,11 +62,10 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 - tab search
 - AI tab organization
 
-
 ## Contributions are welcomed!
 
 # Attributions
-Default thumbnail for tabs - By Sarang - Own work, Public Domain, https://commons.wikimedia.org/w/index.php?curid=18827703
+Default thumbnail for tabs - [By Sarang - Own work, Public Domain](https://commons.wikimedia.org/w/index.php?curid=18827703)
 
 ## License
 
