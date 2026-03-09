@@ -178,13 +178,21 @@ export class DropdownManager {
   _adjustPosition(dropdownMenu, container) {
     const menuRect = dropdownMenu.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
+    const menuWidth = menuRect.width;
+    const tabWidth = 48;
+    const tabCenter = tabWidth / 2;
 
     dropdownMenu.classList.remove(CLASSES.ALIGN_LEFT, CLASSES.ALIGN_RIGHT);
+    dropdownMenu.style.removeProperty('--arrow-offset');
 
     if (menuRect.right > containerRect.right) {
       dropdownMenu.classList.add(CLASSES.ALIGN_RIGHT);
+      const offsetFromMenuCenter = ((menuWidth + 5) / 2) - tabCenter;
+      dropdownMenu.style.setProperty('--arrow-offset', `${offsetFromMenuCenter}px`);
     } else if (menuRect.left < containerRect.left) {
       dropdownMenu.classList.add(CLASSES.ALIGN_LEFT);
+      const offsetFromMenuCenter = -((menuWidth + 5) / 2) + tabCenter;
+      dropdownMenu.style.setProperty('--arrow-offset', `${offsetFromMenuCenter}px`);
     }
   }
 
