@@ -1,4 +1,6 @@
-# Scrollable-tabs-extension
+# Scrollable-tabs-extension 
+![Badge](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2FSKM162%2FScrollable-tabs-extension&label=Visits&icon=lightning-charge-fill&color=%236610f2&message=&style=for-the-badge&tz=Indian%2FMaldives)
+
 Chrome extension that mimics scrollable tab strip experimental feature of chrome (chrome://flags/#scrollable-tabstrip).
 
 A Chrome extension that provides a horizontal, scrollable view of all open tabs in a popup window.
