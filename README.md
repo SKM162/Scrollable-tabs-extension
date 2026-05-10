@@ -14,6 +14,7 @@ Made with AI and human touch <3.
 - **Click to switch** tabs
 - **Real-time synchronization** with browser tab changes
 - **Visual indicators** for pinned tabs and audio playing
+- **Filter tabs** by audio, pinned, grouped, or ungrouped status with text search
 
 ![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/assets/Scrollable%20tab%20peek.png)
 
@@ -59,7 +60,10 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 - new tab creation
 - fix picture in picture handling (tab's pip status not supported by chrome.). fixed audio playing indication.
 
-**Phase 4:**
+**Phase 4 - ✅ Complete**
+- filtering tabs
+
+**Phase 5:**
 - tab reordering
 - tab search
 - AI tab organization
