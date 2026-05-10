@@ -59,7 +59,14 @@ class TabNavigator {
       hoveredTabInfo: $(SELECTORS.HOVERED_TAB_INFO),
       tabCounterWrapper: $(SELECTORS.TAB_COUNTER_WRAPPER),
       themeToggleBtn: $(SELECTORS.THEME_TOGGLE_BTN),
-      settingsBtn: $(SELECTORS.SETTINGS_BTN)
+      settingsBtn: $(SELECTORS.SETTINGS_BTN),
+      searchInput: $(SELECTORS.SEARCH_INPUT),
+      filterDropdown: $(SELECTORS.FILTER_DROPDOWN),
+      filterBtn: $(SELECTORS.FILTER_BTN),
+      filterMenu: $(SELECTORS.FILTER_MENU),
+      filterResults: $(SELECTORS.FILTER_RESULTS),
+      clearFiltersBtn: $(SELECTORS.CLEAR_FILTERS_BTN),
+      clearFiltersBtnInline: $(SELECTORS.CLEAR_FILTERS_BTN_INLINE)
     };
   }
 
@@ -77,7 +84,11 @@ class TabNavigator {
   }
 
   setupIcons() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    setIcon(this.elements.themeToggleBtn, currentTheme === 'dark' ? 'DARK_MODE' : 'LIGHT_MODE');
     setIcon(this.elements.settingsBtn, 'SETTINGS');
+    setIcon(this.elements.filterBtn, 'FILTER');
+    setIcon(this.elements.clearFiltersBtnInline, 'CLEAR_FILTER');
     setIcon(this.elements.tabCounterWrapper?.querySelector('.tab-counter-icon'), 'TAB_COUNTER');
   }
 
@@ -91,7 +102,6 @@ class TabNavigator {
     }
     
     document.documentElement.setAttribute('data-theme', effectiveTheme);
-    this.updateThemeButton(effectiveTheme);
   }
 
   toggleTheme() {
@@ -99,16 +109,10 @@ class TabNavigator {
     const newTheme = currentTheme === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK;
     
     document.documentElement.setAttribute('data-theme', newTheme);
-    this.updateThemeButton(newTheme);
+    setIcon(this.elements.themeToggleBtn, newTheme === THEMES.DARK ? 'DARK_MODE' : 'LIGHT_MODE');
+    this.elements.themeToggleBtn.title = newTheme === THEMES.DARK ? 'Switch to light mode' : 'Switch to dark mode';
     
     this.settings.theme = newTheme;
-  }
-
-  updateThemeButton(theme) {
-    if (this.elements.themeToggleBtn) {
-      this.elements.themeToggleBtn.innerHTML = theme === THEMES.DARK ? ICONS.DARK_MODE : ICONS.DARK_MODE;
-      this.elements.themeToggleBtn.title = theme === THEMES.DARK ? 'Switch to light mode' : 'Switch to dark mode';
-    }
   }
 
   setupDimensions() {
@@ -192,6 +196,70 @@ class TabNavigator {
     // Settings button
     $(SELECTORS.SETTINGS_BTN)?.addEventListener('click', () => {
       chrome.runtime.openOptionsPage();
+    });
+
+    // Filter dropdown toggle
+    this.elements.filterBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = this.elements.filterMenu;
+      if (menu) {
+        menu.classList.toggle('visible');
+        if (menu.classList.contains('visible')) {
+          const containerRect = this.elements.popupContainer.getBoundingClientRect();
+          menu.style.left = '0';
+          menu.style.right = 'auto';
+          const menuRect = menu.getBoundingClientRect();
+          if (menuRect.right > containerRect.width) {
+            menu.style.left = 'auto';
+            menu.style.right = '0';
+          }
+        }
+      }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (this.elements.filterDropdown && !this.elements.filterDropdown.contains(e.target)) {
+        this.elements.filterMenu?.classList.remove('visible');
+      }
+    });
+
+    // Search input
+    this.elements.searchInput?.addEventListener('input', (e) => {
+      this.tabManager.setFilter('searchText', e.target.value);
+      this.updateFilterResults();
+      this.refreshTabList(false, false);
+    });
+
+    // Filter radio buttons (only one active at a time, can click to deselect)
+    this.elements.filterMenu?.querySelectorAll('.filter-switch').forEach(label => {
+      const radio = label.querySelector('input[type="radio"]');
+      if (!radio) return;
+      
+      label.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        if (radio.checked && this.tabManager.filters.radio === radio.dataset.filter) {
+          radio.checked = false;
+          this.tabManager.setFilter('radio', null);
+        } else {
+          radio.checked = true;
+          this.tabManager.setFilter('radio', radio.dataset.filter);
+        }
+        
+        this.updateFilterResults();
+        this.refreshTabList(false, false);
+      });
+    });
+
+    // Clear filters button
+    this.elements.clearFiltersBtn?.addEventListener('click', () => {
+      this.clearAllFilters();
+    });
+
+    // Inline clear filters button
+    this.elements.clearFiltersBtnInline?.addEventListener('click', () => {
+      this.clearAllFilters();
     });
 
     // Scroll buttons
@@ -335,7 +403,8 @@ class TabNavigator {
 
     try {
       // Skip re-render if we just closed a tab ourselves (DOM already updated)
-      if (skipIfClosing && this._closingTabIds.size > 0) {
+      // But only if no filters are active
+      if (skipIfClosing && this._closingTabIds.size > 0 && !this.tabManager.hasActiveFilters()) {
         // Still update the internal tab list but don't re-render
         await this.tabManager.fetchTabs();
         this.updateCurrentTabInfo();
@@ -352,6 +421,7 @@ class TabNavigator {
       
       this.updateCurrentTabInfo();
       this.updateTabCounter();
+      this.updateFilterResults();
 
       // Handle scroll position or auto-center
       if (this.tabManager.isFirstRender) {
@@ -476,6 +546,40 @@ class TabNavigator {
     const counterText = this.tabManager.getTabCounterText();
     if (this.elements.tabCounter) {
       this.elements.tabCounter.textContent = counterText;
+    }
+  }
+
+  updateFilterResults() {
+    if (!this.elements.filterResults) return;
+
+    if (this.tabManager.hasActiveFilters()) {
+      const stats = this.tabManager.getFilterStats();
+      this.elements.filterResults.textContent = `${stats.filtered} of ${stats.total}`;
+    } else {
+      this.elements.filterResults.textContent = '';
+    }
+    this.updateClearFiltersButton();
+  }
+
+  clearAllFilters() {
+    this.tabManager.clearFilters();
+    if (this.elements.searchInput) {
+      this.elements.searchInput.value = '';
+    }
+    this.elements.filterMenu?.querySelectorAll('.filter-switch input[type="radio"]').forEach(radio => {
+      radio.checked = false;
+    });
+    this.updateFilterResults();
+    this.refreshTabList(false, false);
+  }
+
+  updateClearFiltersButton() {
+    const hasFilters = this.tabManager.hasActiveFilters();
+    if (this.elements.clearFiltersBtn) {
+      this.elements.clearFiltersBtn.style.display = hasFilters ? 'block' : 'none';
+    }
+    if (this.elements.clearFiltersBtnInline) {
+      this.elements.clearFiltersBtnInline.style.display = hasFilters ? 'block' : 'none';
     }
   }
 

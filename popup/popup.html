@@ -10,6 +10,49 @@
   <div class="popup-container" id="popupContainer">
     <div class="header-bar">
       <div class="header-actions">
+        <button class="clear-filters-btn-inline" id="clearFiltersBtnInline" title="Clear filters"></button>
+        <div class="filter-dropdown" id="filterDropdown">
+          <button class="filter-dropdown-btn" id="filterBtn" title="Filter tabs"></button>
+          <div class="filter-menu" id="filterMenu">
+            <div class="filter-search-wrapper">
+              <input type="text" id="searchInput" class="filter-search-input" placeholder="Search tabs...">
+            </div>
+            <div class="filter-options">
+              <label class="filter-switch">
+                <input type="radio" name="filter" data-filter="audio">
+                <span class="switch-track">
+                  <span class="switch-thumb"></span>
+                </span>
+                <span class="switch-label">Audio</span>
+              </label>
+              <label class="filter-switch">
+                <input type="radio" name="filter" data-filter="pinned">
+                <span class="switch-track">
+                  <span class="switch-thumb"></span>
+                </span>
+                <span class="switch-label">Pinned</span>
+              </label>
+              <label class="filter-switch">
+                <input type="radio" name="filter" data-filter="grouped">
+                <span class="switch-track">
+                  <span class="switch-thumb"></span>
+                </span>
+                <span class="switch-label">Grouped</span>
+              </label>
+              <label class="filter-switch">
+                <input type="radio" name="filter" data-filter="ungrouped">
+                <span class="switch-track">
+                  <span class="switch-thumb"></span>
+                </span>
+                <span class="switch-label">Ungrouped</span>
+              </label>
+            </div>
+            <div class="filter-footer">
+              <span class="filter-results" id="filterResults"></span>
+              <button class="clear-filters-btn" id="clearFiltersBtn">Clear</button>
+            </div>
+          </div>
+        </div>
         <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme"></button>
         <button class="settings-btn" id="settingsBtn" title="Settings"></button>
       </div>

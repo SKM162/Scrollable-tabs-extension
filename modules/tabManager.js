@@ -18,6 +18,10 @@ export class TabManager {
     this.onDropdownAction = options.onDropdownAction || (() => {});
     this.isFirstRender = true;
     this._groupInfoCache = new Map();
+    this.filters = {
+      searchText: '',
+      radio: null
+    };
   }
 
   /**
@@ -64,6 +68,76 @@ export class TabManager {
   }
 
   /**
+   * Set a filter value
+   * @param {string} filterType - The filter type (searchText, audio, pinned, etc.)
+   * @param {*} value - The filter value
+   */
+  setFilter(filterType, value) {
+    this.filters[filterType] = value;
+  }
+
+  /**
+   * Clear all filters
+   */
+  clearFilters() {
+    this.filters = {
+      searchText: '',
+      radio: null
+    };
+  }
+
+  /**
+   * Check if any filters are active
+   * @returns {boolean}
+   */
+  hasActiveFilters() {
+    return (
+      this.filters.searchText ||
+      this.filters.radio
+    );
+  }
+
+  /**
+   * Get filtered tabs
+   * @returns {chrome.tabs.Tab[]}
+   */
+  getFilteredTabs() {
+    let filtered = [...this.tabs];
+
+    if (this.filters.searchText) {
+      const searchLower = this.filters.searchText.toLowerCase();
+      filtered = filtered.filter(tab => {
+        const titleMatch = tab.title?.toLowerCase().includes(searchLower);
+        const urlMatch = tab.url?.toLowerCase().includes(searchLower);
+        return titleMatch || urlMatch;
+      });
+    }
+
+    if (this.filters.radio) {
+      const radioFilter = this.filters.radio;
+      filtered = filtered.filter(tab => {
+        if (radioFilter === 'audio') return tab.audible || tab.mutedInfo?.muted;
+        if (radioFilter === 'pinned') return tab.pinned;
+        if (radioFilter === 'grouped') return tab.groupId && tab.groupId !== chrome.tabs.TAB_ID_NONE;
+        if (radioFilter === 'ungrouped') return !tab.groupId || tab.groupId === chrome.tabs.TAB_ID_NONE;
+        return true;
+      });
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Get filter stats
+   * @returns {{total: number, filtered: number}}
+   */
+  getFilterStats() {
+    const total = this.tabs.length;
+    const filtered = this.getFilteredTabs().length;
+    return { total, filtered };
+  }
+
+  /**
    * Mark that first render is complete
    */
   markFirstRenderComplete() {
@@ -71,12 +145,19 @@ export class TabManager {
   }
 
   /**
-   * Render all tabs
+   * Render all tabs (or filtered tabs if filters are active)
    */
   async render() {
     this.container.innerHTML = '';
 
-    const { pinnedTabs, unpinnedTabs } = this._categorizeTabs();
+    const tabsToRender = this.hasActiveFilters() ? this.getFilteredTabs() : this.tabs;
+
+    if (tabsToRender.length === 0 && this.hasActiveFilters()) {
+      this._renderNoResults();
+      return;
+    }
+
+    const { pinnedTabs, unpinnedTabs } = this._categorizeTabs(tabsToRender);
     const { groupedTabs, ungroupedTabs } = this._groupTabs(unpinnedTabs);
     const sortedGroups = this._sortGroups(groupedTabs);
 
@@ -89,6 +170,119 @@ export class TabManager {
 
     // Render unpinned tabs in order
     await this._renderUnpinnedTabs(unpinnedTabs, sortedGroups);
+  }
+
+_renderNoResults() {
+    const boxWidth = 48;
+    const boxGap = 4;
+    const totalBox = boxWidth + boxGap;
+    const containerWidth = (this.container.clientWidth || 500) - 40;
+    const boxCount = Math.floor(containerWidth / totalBox);
+
+    const container = createElement('div', {
+      className: `${CLASSES.NO_RESULTS}`,
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        width: '100%',
+        minWidth: '0',
+        padding: '20px'
+      }
+    });
+
+    const ghostRow = createElement('div', {
+      style: {
+        display: 'flex',
+        gap: `${boxGap}px`,
+        alignItems: 'flex-start',
+        position: 'relative',
+        overflow: 'hidden',
+        width: '100%',
+        justifyContent: 'center'
+      }
+    });
+
+    for (let i = 0; i < boxCount; i++) {
+      const ghostWrapper = createElement('div', {
+        style: {
+          width: `${boxWidth}px`,
+          height: '64px',
+          background: 'var(--ghost-box-bg)',
+          borderRadius: '5px',
+          boxShadow: 'var(--ghost-box-shadow)',
+          flexShrink: '0'
+        }
+      });
+      ghostRow.appendChild(ghostWrapper);
+    }
+
+    const travelWidth = (boxCount - 1) * totalBox;
+
+    const movingGhost = createElement('div', {
+      innerHTML: ICONS.GHOST,
+      style: {
+        position: 'absolute',
+        width: '32px',
+        height: '32px',
+        top: '16px',
+        left: '0px',
+        animation: `ghostFade 8s ease-in-out infinite`
+      }
+    });
+
+    const styleId = 'ghost-animation-style';
+    let existingStyle = document.getElementById(styleId);
+    if (existingStyle) existingStyle.remove();
+
+    const styleSheet = document.createElement('style');
+    styleSheet.id = styleId;
+    styleSheet.textContent = `
+      .ghost-animated {
+        color: var(--ghost-color);
+      }
+      @keyframes ghostFade {
+        0% { left: 0px; opacity: 0; }
+        5% { opacity: 0.9; }
+        85% { opacity: 0.9; }
+        100% { left: ${travelWidth}px; opacity: 0; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+
+    movingGhost.classList.add('ghost-animated');
+
+    ghostRow.appendChild(movingGhost);
+
+    const iconWrapper = createElement('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '32px',
+        height: '32px',
+        background: 'var(--ghost-icon-wrapper-bg)',
+        borderRadius: '50%',
+        marginTop: '4px'
+      }
+    });
+
+    const filterIcon = createElement('div', {
+      innerHTML: ICONS.FILTER,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--ghost-icon-stroke)'
+      }
+    });
+
+    iconWrapper.appendChild(filterIcon);
+    container.appendChild(ghostRow);
+    container.appendChild(iconWrapper);
+    this.container.appendChild(container);
   }
 
   /**
@@ -128,11 +322,11 @@ export class TabManager {
     }
   }
 
-  _categorizeTabs() {
+  _categorizeTabs(tabs = this.tabs) {
     const pinnedTabs = [];
     const unpinnedTabs = [];
 
-    this.tabs.forEach(tab => {
+    tabs.forEach(tab => {
       if (tab.pinned) {
         pinnedTabs.push(tab);
       } else {
