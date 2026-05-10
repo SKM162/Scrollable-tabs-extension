@@ -225,9 +225,9 @@ _renderNoResults() {
       innerHTML: ICONS.GHOST,
       style: {
         position: 'absolute',
-        width: '32px',
-        height: '32px',
-        top: '16px',
+        width: '40px',
+        height: '40px',
+        top: '12px',
         left: '0px',
         animation: `ghostFade 8s ease-in-out infinite`
       }
@@ -260,11 +260,10 @@ _renderNoResults() {
       style: {
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        width: '32px',
-        height: '32px',
+        gap: '8px',
         background: 'var(--ghost-icon-wrapper-bg)',
-        borderRadius: '50%',
+        borderRadius: '6px',
+        padding: '8px 12px',
         marginTop: '4px'
       }
     });
@@ -279,7 +278,17 @@ _renderNoResults() {
       }
     });
 
+    const noResultsText = createElement('span', {
+      textContent: 'No tabs found for the applied filter',
+      style: {
+        color: 'var(--text-primary)',
+        fontSize: '13px'
+      }
+    });
+
     iconWrapper.appendChild(filterIcon);
+    iconWrapper.appendChild(noResultsText);
+
     container.appendChild(ghostRow);
     container.appendChild(iconWrapper);
     this.container.appendChild(container);
