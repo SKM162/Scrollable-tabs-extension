@@ -1,4 +1,4 @@
-/** @fileoverview Centralized constants for the Tab Navigator extension */
+/** @fileoverview Centralized constants for the Scrollable Tabs extension */
 
 /** Default settings for the extension */
 export const DEFAULT_SETTINGS = {

@@ -1,4 +1,4 @@
-/** @fileoverview Tab Navigator - Main Popup Logic */
+/** @fileoverview Scrollable Tabs - Main Popup Logic */
 
 import {
   DEFAULT_SETTINGS,
