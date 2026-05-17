@@ -8,79 +8,204 @@
 </head>
 <body>
   <div class="settings-container">
-    <header>
-      <h1>Scrollable Tabs Settings</h1>
+    <header class="settings-header">
+      <div class="settings-title">
+        <div class="settings-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h1>Settings</h1>
+      </div>
+      <div class="theme-toggle">
+        <button class="theme-btn active" data-theme="light" title="Light">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+        <button class="theme-btn" data-theme="dark" title="Dark">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button class="theme-btn" data-theme="auto" title="Auto">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
     </header>
-    
+
     <main>
-      <section class="settings-section">
-        <h2>View Settings</h2>
-        
-        <div class="setting-item">
-          <label for="theme">Theme:</label>
-          <select id="theme">
-            <option value="auto">Auto (follows system)</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+          <h2 class="card-title">Appearance</h2>
         </div>
-        
-        <div class="setting-item">
-          <label for="popupWidth">Popup Width:</label>
-          <div class="slider-group">
-            <input type="range" id="popupWidth" min="400" max="800" step="50" value="800">
-            <span id="popupWidthValue">800</span>px
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Theme</div>
+            <div class="setting-desc">Choose your preferred color scheme</div>
+          </div>
+          <div class="setting-control">
+            <select id="theme" class="drop-down">
+              <option value="auto">Auto (follows system)</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
           </div>
         </div>
-        
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="showTitles">
-            Show tab titles
-          </label>
-        </div>
-        
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="showIndices">
-            Show tab counter (e.g., "Tab 4 of 6")
-          </label>
-        </div>
-      </section>
-      
-      <section class="settings-section">
-        <h2>Behavior</h2>
-        
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="autoCenter" checked>
-            Auto-center on active tab when popup opens
-          </label>
-        </div>
-        
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="keyboardNav" checked>
-            Enable keyboard navigation
-          </label>
-        </div>
-        
-        <div class="setting-item">
-          <label for="scrollSpeed">Mouse Wheel Scroll Speed:</label>
-          <div class="slider-group">
-            <input type="range" id="scrollSpeed" min="0.5" max="3" step="0.1" value="1.0">
-            <span id="scrollSpeedValue">1.0</span>x
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Popup Width</div>
+            <div class="setting-desc">Adjust the width of the popup window</div>
+          </div>
+          <div class="setting-control">
+            <div class="slider-control">
+              <span id="popupWidthValue" class="slider-value">800</span>
+              <div class="slider-wrapper">
+                <input type="range" id="popupWidth" class="slider" min="400" max="800" step="50" value="800">
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-      
-      <div class="settings-actions">
-        <button id="saveBtn" class="btn btn-primary">Save Settings</button>
-        <button id="resetBtn" class="btn btn-secondary">Reset to Defaults</button>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Show Tab Titles</div>
+            <div class="setting-desc">Display text labels under tab thumbnails</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="showTitles" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <h2 class="card-title">Behavior</h2>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Auto-Center on Active Tab</div>
+            <div class="setting-desc">Scroll to the active tab when popup opens</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="autoCenter" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Keyboard Navigation</div>
+            <div class="setting-desc">Use arrow keys to navigate between tabs</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="keyboardNav" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Scroll Speed</div>
+            <div class="setting-desc">Adjust mouse wheel scroll sensitivity</div>
+          </div>
+          <div class="setting-control">
+            <div class="slider-control">
+              <span id="scrollSpeedValue" class="slider-value">1.0x</span>
+              <div class="slider-wrapper">
+                <input type="range" id="scrollSpeed" class="slider" min="0.5" max="3" step="0.1" value="1.0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Show Tab Counter</div>
+            <div class="setting-desc">Display current position (e.g., "4 of 12")</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="showIndices">
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+        </div>
+</div>
+
+      <div class="settings-card actions-card">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+          </div>
+          <h2 class="card-title">Actions</h2>
+        </div>
+
+        <div class="actions-bar">
+          <button id="resetBtn" class="btn btn-secondary">
+            <span class="btn-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+              </svg>
+            </span>
+            Reset Defaults
+          </button>
+        </div>
       </div>
     </main>
+
+    <footer class="version-info">
+      Scrollable Tabs Extension &middot; <a target="_blank" href="https://chromewebstore.google.com/detail/scrollable-tabs/beneiafglkilogdikodimmbmnkbpnnba">Rate & Review</a>
+    </footer>
   </div>
-  
+
+<div id="notification" class="notification">
+     <span id="notificationText">Settings saved</span>
+   </div>
+
   <script type="module" src="settings.js"></script>
 </body>
 </html>

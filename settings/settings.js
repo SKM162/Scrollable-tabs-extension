@@ -1,7 +1,6 @@
 /** @fileoverview Settings Page Logic */
 
 import { loadSettings, saveSettings } from '../utils/storage.js';
-import { showMessage } from '../modules/uiUtils.js';
 
 const DEFAULT_SETTINGS = {
   popupWidth: 800,
@@ -13,6 +12,18 @@ const DEFAULT_SETTINGS = {
   theme: 'auto'
 };
 
+let saveTimeout = null;
+
+function applyTheme(theme) {
+  let effectiveTheme = theme;
+
+  if (theme === 'auto') {
+    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  document.documentElement.setAttribute('data-theme', effectiveTheme);
+}
+
 class SettingsManager {
   constructor() {
     this.currentSettings = { ...DEFAULT_SETTINGS };
@@ -22,9 +33,17 @@ class SettingsManager {
   async init() {
     this.cacheElements();
     await this.loadSettings();
+    this.applyInitialTheme();
     this.populateForm();
-    this.setupEventListeners();
     this.setupSliderUpdates();
+    this.setupThemeToggle();
+    this.syncThemeToggleState();
+    this.setupAutoSave();
+  }
+
+  applyInitialTheme() {
+    const theme = this.currentSettings.theme || 'auto';
+    applyTheme(theme);
   }
 
   cacheElements() {
@@ -38,8 +57,10 @@ class SettingsManager {
       scrollSpeed: document.getElementById('scrollSpeed'),
       scrollSpeedValue: document.getElementById('scrollSpeedValue'),
       theme: document.getElementById('theme'),
-      saveBtn: document.getElementById('saveBtn'),
-      resetBtn: document.getElementById('resetBtn')
+      resetBtn: document.getElementById('resetBtn'),
+      notification: document.getElementById('notification'),
+      notificationText: document.getElementById('notificationText'),
+      themeButtons: document.querySelectorAll('.theme-btn')
     };
   }
 
@@ -52,40 +73,77 @@ class SettingsManager {
   }
 
   populateForm() {
-    // Theme
     this.elements.theme.value = this.currentSettings.theme || 'auto';
-    
-    // Popup width
     this.elements.popupWidth.value = this.currentSettings.popupWidth;
     this.elements.popupWidthValue.textContent = this.currentSettings.popupWidth;
-    
-    // Checkboxes
     this.elements.showTitles.checked = this.currentSettings.showTitles;
     this.elements.showIndices.checked = this.currentSettings.showIndices;
     this.elements.autoCenter.checked = this.currentSettings.autoCenter;
     this.elements.keyboardNav.checked = this.currentSettings.keyboardNav;
-    
-    // Scroll speed
     this.elements.scrollSpeed.value = this.currentSettings.scrollSpeed;
-    this.elements.scrollSpeedValue.textContent = this.currentSettings.scrollSpeed;
+    this.elements.scrollSpeedValue.textContent = parseFloat(this.currentSettings.scrollSpeed).toFixed(1);
+  }
+
+  setupAutoSave() {
+    const autoSaveHandler = () => {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => this.saveSettings(), 300);
+    };
+
+    this.elements.theme.addEventListener('change', autoSaveHandler);
+    this.elements.popupWidth.addEventListener('input', autoSaveHandler);
+    this.elements.scrollSpeed.addEventListener('input', autoSaveHandler);
+    this.elements.showTitles.addEventListener('change', autoSaveHandler);
+    this.elements.showIndices.addEventListener('change', autoSaveHandler);
+    this.elements.autoCenter.addEventListener('change', autoSaveHandler);
+    this.elements.keyboardNav.addEventListener('change', autoSaveHandler);
+
+    this.elements.resetBtn.addEventListener('click', () => this.resetSettings());
+    this.elements.theme.addEventListener('change', () => {
+      applyTheme(this.elements.theme.value);
+      this.syncThemeToggleState();
+    });
   }
 
   setupSliderUpdates() {
     this.elements.popupWidth.addEventListener('input', (e) => {
       this.elements.popupWidthValue.textContent = e.target.value;
     });
-    
+
     this.elements.scrollSpeed.addEventListener('input', (e) => {
-      this.elements.scrollSpeedValue.textContent = parseFloat(e.target.value).toFixed(1);
+      this.elements.scrollSpeedValue.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
     });
   }
 
-  setupEventListeners() {
-    this.elements.saveBtn.addEventListener('click', () => this.saveSettings());
-    this.elements.resetBtn.addEventListener('click', () => this.resetSettings());
+  setupThemeToggle() {
+    this.elements.themeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        this.elements.theme.value = theme;
+        applyTheme(theme);
+        this.syncThemeToggleState();
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => this.saveSettings(), 300);
+      });
+    });
   }
 
-  async saveSettings() {
+  syncThemeToggleState() {
+    const currentTheme = this.elements.theme.value;
+    this.elements.themeButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+    });
+  }
+
+  showNotification(message) {
+    this.elements.notificationText.textContent = message;
+    this.elements.notification.classList.add('show');
+    setTimeout(() => {
+      this.elements.notification.classList.remove('show');
+    }, 2500);
+  }
+
+  async saveSettings(manual = false) {
     const newSettings = {
       popupWidth: parseInt(this.elements.popupWidth.value),
       showTitles: this.elements.showTitles.checked,
@@ -95,14 +153,14 @@ class SettingsManager {
       scrollSpeed: parseFloat(this.elements.scrollSpeed.value),
       theme: this.elements.theme.value
     };
-    
+
     try {
       await saveSettings(newSettings);
       this.currentSettings = { ...newSettings };
-      showMessage('Settings saved successfully!', 'success');
+      this.showNotification(manual ? 'Settings saved' : 'Saved');
     } catch (error) {
       console.error('Error saving settings:', error);
-      showMessage('Error saving settings. Please try again.', 'error');
+      this.showNotification('Error saving settings');
     }
   }
 
@@ -112,15 +170,16 @@ class SettingsManager {
         await saveSettings(DEFAULT_SETTINGS);
         this.currentSettings = { ...DEFAULT_SETTINGS };
         this.populateForm();
-        showMessage('Settings reset to defaults.', 'success');
+        applyTheme(DEFAULT_SETTINGS.theme);
+        this.syncThemeToggleState();
+        this.showNotification('Settings reset to defaults');
       } catch (error) {
         console.error('Error resetting settings:', error);
-        showMessage('Error resetting settings.', 'error');
+        this.showNotification('Error resetting settings');
       }
     }
   }
 }
 
-// Initialize
 const settings = new SettingsManager();
 document.addEventListener('DOMContentLoaded', () => settings.init());
