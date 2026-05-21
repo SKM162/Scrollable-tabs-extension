@@ -115,18 +115,130 @@ main a:hover {
 }
 
 /* Responsive */
-@media (max-width: 600px) {
+
+/* Tablet: max-width 1024px */
+@media (max-width: 1024px) {
+  header {
+    padding: 1.25rem 1.5rem;
+  }
+
+  main {
+    padding: 3rem 1.5rem;
+  }
+}
+
+/* Mobile: max-width 768px */
+@media (max-width: 768px) {
+  header {
+    padding: 1rem 1.25rem;
+  }
+
   .header-content {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
     text-align: center;
+  }
+
+  .logo-link {
+    gap: 0.5rem;
   }
 
   h1 {
     font-size: 1.6rem;
   }
 
+  .last-updated {
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
   main {
-    padding: 2.5rem 1.5rem;
+    padding: 2.5rem 1.25rem;
+  }
+
+  main h2 {
+    font-size: 1.15rem;
+  }
+
+  main p {
+    font-size: 0.9rem;
+  }
+
+  main ul li {
+    font-size: 0.9rem;
+  }
+
+  .highlight-box {
+    padding: 1rem;
+  }
+}
+
+/* Small Mobile: max-width 480px */
+@media (max-width: 480px) {
+  header {
+    padding: 0.875rem 1rem;
+  }
+
+  .logo-link {
+    gap: 0.5rem;
+  }
+
+  .logo-small {
+    width: 28px;
+    height: 28px;
+  }
+
+  .logo-small img {
+    width: 18px;
+    height: 18px;
+  }
+
+  .logo-text-small {
+    font-size: 1rem;
+  }
+
+  .back-link {
+    font-size: 0.85rem;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  .last-updated {
+    font-size: 0.8rem;
+    margin-bottom: 1.75rem;
+  }
+
+  main {
+    padding: 2rem 1rem;
+  }
+
+  .section {
+    margin-bottom: 2rem;
+  }
+
+  main h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  main p {
+    font-size: 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+
+  main ul {
+    margin-left: 1.25rem;
+  }
+
+  main ul li {
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .highlight-box {
+    padding: 0.875rem;
+    border-radius: 6px;
   }
 }
