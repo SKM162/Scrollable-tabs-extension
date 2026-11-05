@@ -178,7 +178,11 @@ export class ScrollManager {
   }
 
   _handleScroll() {
-    this.setScrollingPriority();
+    // NOTE: do not call setScrollingPriority() here. 'scroll' also fires for
+    // programmatic scrolls (centering, anchor restore, scrollLeft being clamped
+    // after a tab is removed), and the is-scrolling class disables pointer
+    // events on every tab - which silently swallowed clicks on the dropdown /
+    // "Close" button right after those scrolls. Only real wheel input sets it.
     const currentScrollLeft = this.tabContainer.scrollLeft;
     const maxScroll = this.tabContainer.scrollWidth - this.tabContainer.offsetWidth;
     
@@ -192,6 +196,7 @@ export class ScrollManager {
 
   _handleWheel(e) {
     e.preventDefault();
+    this.setScrollingPriority();
     
     // Get scroll delta (prefer X for trackpads, fall back to Y)
     const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;

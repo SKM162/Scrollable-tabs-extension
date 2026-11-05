@@ -1,20 +1,6 @@
-/** @fileoverview Background service worker for Scrollable Tabs extension */
-
-// Handle messages from popup or other scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'GET_TABS') {
-    chrome.tabs.query({ currentWindow: true }, (tabs) => {
-      sendResponse({ tabs: tabs });
-    });
-    return true;
-  }
-  
-  if (message.type === 'GET_SETTINGS') {
-    chrome.storage.sync.get(null, (settings) => {
-      sendResponse({ settings: settings });
-    });
-    return true;
-  }
-  
-  return false;
-});
+/** @fileoverview Background service worker for Scrollable Tabs extension
+ *
+ * The popup talks to the chrome.tabs API directly, so the service worker has
+ * no message handlers. (A previous GET_TABS/GET_SETTINGS handler was unused
+ * and returned every tab's URL/title to any extension context that asked.)
+ */

@@ -113,8 +113,13 @@ export function createDropdownMenu(tab, onAction) {
  * Dropdown manager class
  */
 export class DropdownManager {
-  constructor() {
+  /**
+   * @param {Object} [options]
+   * @param {Function} [options.onClose] - Called whenever an open dropdown is closed
+   */
+  constructor(options = {}) {
     this.currentOpenDropdown = null;
+    this.onClose = options.onClose || (() => {});
     this._boundCloseOnClickOutside = this._closeOnClickOutside.bind(this);
   }
 
@@ -127,6 +132,8 @@ export class DropdownManager {
   toggle(tabElement, tab, container) {
     const dropdownMenu = tabElement.querySelector(`.${CLASSES.TAB_DROPDOWN_MENU}`);
     const dropdownBtn = tabElement.querySelector(`.${CLASSES.TAB_DROPDOWN_BTN}`);
+
+    if (!dropdownMenu || !dropdownBtn) return;
 
     // If this dropdown is already open, close it
     if (this.currentOpenDropdown === dropdownMenu) {
@@ -152,6 +159,7 @@ export class DropdownManager {
    * Close all open dropdowns
    */
   closeAll() {
+    const wasOpen = this.currentOpenDropdown !== null;
     $$(`.${CLASSES.TAB_DROPDOWN_MENU}.${CLASSES.VISIBLE}`).forEach(menu => {
       menu.classList.remove(CLASSES.VISIBLE, CLASSES.ALIGN_LEFT, CLASSES.ALIGN_RIGHT);
     });
@@ -159,6 +167,15 @@ export class DropdownManager {
       btn.classList.remove(CLASSES.ACTIVE);
     });
     this.currentOpenDropdown = null;
+    if (wasOpen) this.onClose();
+  }
+
+  /**
+   * Whether a dropdown menu is currently open
+   * @returns {boolean}
+   */
+  isOpen() {
+    return this.currentOpenDropdown !== null && this.currentOpenDropdown.isConnected;
   }
 
   /**
@@ -205,48 +222,52 @@ export class DropdownManager {
 }
 
 /**
- * Handle dropdown actions
+ * Handle dropdown actions.
+ *
+ * The tab object captured when the popup rendered can be stale (pinned/muted
+ * state, index, or even the id after Chrome discards a tab), so state-dependent
+ * actions re-read the tab first. Errors are caught and logged instead of being
+ * left as unhandled promise rejections.
+ *
  * @param {string} action - Action name
  * @param {chrome.tabs.Tab} tab - Target tab
+ * @returns {Promise<boolean>} true if the action succeeded
  */
 export async function handleDropdownAction(action, tab) {
-  switch (action) {
-    case DROPDOWN_ACTIONS.PIN:
-      await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
-      break;
-    case DROPDOWN_ACTIONS.MUTE:
-      await chrome.tabs.update(tab.id, { muted: !tab.mutedInfo?.muted });
-      break;
-    case DROPDOWN_ACTIONS.DUPLICATE:
-      await chrome.tabs.duplicate(tab.id);
-      break;
-    case DROPDOWN_ACTIONS.RELOAD:
-      await chrome.tabs.reload(tab.id);
-      break;
-    case DROPDOWN_ACTIONS.COPY_URL:
-      try {
-        await navigator.clipboard.writeText(tab.url);
-      } catch (err) {
-        console.error('Failed to copy URL:', err);
-      }
-      break;
-    case DROPDOWN_ACTIONS.NEW_TAB_RIGHT:
-      await chrome.tabs.create({ 
-        windowId: tab.windowId,
-        index: tab.index + 1 
-      });
-      break;
-    case DROPDOWN_ACTIONS.NEW_TAB_LEFT:
-      await chrome.tabs.create({ 
-        windowId: tab.windowId,
-        index: tab.index 
-      });
-      break;
-    case DROPDOWN_ACTIONS.NEW_WINDOW:
-      await chrome.windows.create({ tabId: tab.id });
-      break;
-    case DROPDOWN_ACTIONS.CLOSE:
-      await chrome.tabs.remove(tab.id);
-      break;
+  try {
+    const fresh = await chrome.tabs.get(tab.id);
+    switch (action) {
+      case DROPDOWN_ACTIONS.PIN:
+        await chrome.tabs.update(fresh.id, { pinned: !fresh.pinned });
+        break;
+      case DROPDOWN_ACTIONS.MUTE:
+        await chrome.tabs.update(fresh.id, { muted: !fresh.mutedInfo?.muted });
+        break;
+      case DROPDOWN_ACTIONS.DUPLICATE:
+        await chrome.tabs.duplicate(fresh.id);
+        break;
+      case DROPDOWN_ACTIONS.RELOAD:
+        await chrome.tabs.reload(fresh.id);
+        break;
+      case DROPDOWN_ACTIONS.COPY_URL:
+        await navigator.clipboard.writeText(fresh.url || fresh.pendingUrl || '');
+        break;
+      case DROPDOWN_ACTIONS.NEW_TAB_RIGHT:
+        await chrome.tabs.create({ windowId: fresh.windowId, index: fresh.index + 1 });
+        break;
+      case DROPDOWN_ACTIONS.NEW_TAB_LEFT:
+        await chrome.tabs.create({ windowId: fresh.windowId, index: fresh.index });
+        break;
+      case DROPDOWN_ACTIONS.NEW_WINDOW:
+        await chrome.windows.create({ tabId: fresh.id });
+        break;
+      case DROPDOWN_ACTIONS.CLOSE:
+        await chrome.tabs.remove(fresh.id);
+        break;
+    }
+    return true;
+  } catch (err) {
+    console.error(`Tab action "${action}" failed for tab ${tab?.id}:`, err);
+    return false;
   }
 }

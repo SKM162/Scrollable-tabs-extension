@@ -19,7 +19,7 @@ import {
   $,
   $$
 } from '../modules/index.js';
-import { loadSettings } from '../utils/storage.js';
+import { loadSettings, saveSettings } from '../utils/storage.js';
 
 class TabNavigator {
   constructor() {
@@ -113,6 +113,8 @@ class TabNavigator {
     this.elements.themeToggleBtn.title = newTheme === THEMES.DARK ? 'Switch to light mode' : 'Switch to dark mode';
     
     this.settings.theme = newTheme;
+    // Persist the choice (previously it was only kept in memory and lost on close)
+    saveSettings({ theme: newTheme });
   }
 
   setupDimensions() {
@@ -125,19 +127,28 @@ class TabNavigator {
   }
 
   setupManagers() {
-    // Track tabs being closed to avoid full re-render
+    // Tabs we asked Chrome to close and whose removal we're still waiting on
     this._closingTabIds = new Set();
-    // Grace period after close to batch related events
-    this._closeGracePeriod = false;
-    // Render lock to prevent concurrent renders
+    // Render state: a refresh requested while one is running is queued, not dropped
     this._isRendering = false;
+    this._renderQueued = false;
+    // A refresh requested while a tab's dropdown menu is open is deferred until it
+    // closes, so background tab updates (title/favicon changes) can't rebuild the
+    // DOM under the user's cursor and destroy the menu they're about to click.
+    this._refreshDeferred = false;
+    // Once the user scrolls/clicks we stop auto-centering on 'resize'
+    this._userInteracted = false;
 
     // Tab manager
     this.tabManager = new TabManager({
       container: this.elements.tabContainer,
       settings: this.settings,
-      onTabClick: (tabId) => {
-        chrome.tabs.update(tabId, { active: true });
+      onTabClick: async (tabId) => {
+        try {
+          await chrome.tabs.update(tabId, { active: true });
+        } catch (err) {
+          console.error('Failed to activate tab:', err);
+        }
         window.close();
       },
       onTabHover: (tab) => this.updateHoveredTabInfo(tab),
@@ -147,21 +158,7 @@ class TabNavigator {
           this.dropdownManager.toggle(tabElement, tab, this.elements.popupContainer);
         } else if (action === 'close') {
           this.dropdownManager.closeAll();
-          // Track this tab as being closed by us BEFORE calling chrome.tabs.remove
-          this._closingTabIds.add(tab.id);
-          this._closeGracePeriod = true;
-          
-          // Immediately remove from DOM for smooth UX
-          this._removeTabElement(tab.id);
-          
-          // Call Chrome API to close the tab
-          handleDropdownAction(action, tab);
-          
-          // Clear grace period after all related events should have fired
-          setTimeout(() => {
-            this._closeGracePeriod = false;
-            this._closingTabIds.delete(tab.id);
-          }, 500);
+          this.closeTab(tab);
         } else {
           this.dropdownManager.closeAll();
           handleDropdownAction(action, tab);
@@ -178,7 +175,14 @@ class TabNavigator {
     this.scrollManager.setup();
 
     // Dropdown manager
-    this.dropdownManager = new DropdownManager();
+    this.dropdownManager = new DropdownManager({
+      onClose: () => {
+        if (this._refreshDeferred) {
+          this._refreshDeferred = false;
+          this.refreshTabList();
+        }
+      }
+    });
     this.dropdownManager.setup();
 
     // Keyboard navigation
@@ -291,17 +295,32 @@ class TabNavigator {
       this.scrollToCurrentTab();
     });
 
-    // Window resize
+    // Track user interaction so we stop auto-centering once they've moved around
+    const markInteracted = () => { this._userInteracted = true; };
+    this.elements.tabContainer.addEventListener('wheel', markInteracted, { passive: true });
+    this.elements.tabContainer.addEventListener('pointerdown', markInteracted);
+    this.elements.popupContainer.querySelectorAll('.nav-btn-inline').forEach(btn => {
+      btn.addEventListener('click', markInteracted);
+    });
+
+    // Window resize.
+    // Chrome fires 'resize' on the action popup on many layout passes (hover,
+    // opening a dropdown, ...) even when the size doesn't change. Re-centering
+    // on each of those snapped the strip back to the active tab, moving the tab
+    // the user was about to close out from under the cursor whenever the active
+    // tab was scrolled out of view. Only react to real size changes, and only
+    // before the user has started scrolling.
+    let lastSize = `${window.innerWidth}x${window.innerHeight}`;
     const handleResize = () => {
+      const size = `${window.innerWidth}x${window.innerHeight}`;
+      if (size === lastSize) return;
+      lastSize = size;
+      if (this._userInteracted || this.dropdownManager.isOpen()) return;
       this.tabManager.highlightActiveTab();
       if (this.settings.autoCenter) {
         const activeTab = this.tabManager.getActiveTab();
-        if (activeTab) {
-          const element = this.tabManager.findTabElement(activeTab.id);
-          if (element) {
-            this.scrollManager.centerTab(element);
-          }
-        }
+        const element = activeTab && this.tabManager.findTabElement(activeTab.id);
+        if (element) this.scrollManager.centerTab(element);
       }
     };
     window.addEventListener('resize', handleResize);
@@ -314,47 +333,45 @@ class TabNavigator {
   setupChromeListeners() {
     // Debounced refresh to batch multiple rapid events
     this._refreshTimeout = null;
-    const debouncedRefresh = (source) => {
+    const debouncedRefresh = () => {
       if (this._refreshTimeout) clearTimeout(this._refreshTimeout);
       this._refreshTimeout = setTimeout(() => {
-        // Skip refresh during close grace period
-        if (this._closeGracePeriod) {
-          return;
-        }
+        this._refreshTimeout = null;
         this.refreshTabList();
       }, 50);
     };
 
     const listeners = [
-      { event: chrome.tabs.onActivated, handler: (activeInfo) => {
-        // Skip if we're in close grace period (Chrome auto-activates another tab after close)
-        if (this._closeGracePeriod) {
-          return;
+      {
+        // Activation doesn't change the strip's structure: just re-read the tab
+        // list and move the highlight instead of rebuilding the whole DOM.
+        event: chrome.tabs.onActivated,
+        handler: () => this.syncActiveTab()
+      },
+      { event: chrome.tabs.onCreated, handler: debouncedRefresh },
+      {
+        event: chrome.tabs.onRemoved,
+        handler: (tabId) => {
+          if (this._closingTabIds.has(tabId)) {
+            // We closed it ourselves and already removed it from the DOM
+            this.tabManager.forgetTab(tabId);
+            this.updateTabCounter();
+            this.updateFilterResults();
+            return;
+          }
+          debouncedRefresh();
         }
-        debouncedRefresh('onActivated');
-      }},
-      { event: chrome.tabs.onCreated, handler: () => debouncedRefresh('onCreated') },
-      { event: chrome.tabs.onRemoved, handler: (tabId) => {
-        // Skip if we closed this tab ourselves (already handled)
-        if (this._closingTabIds.has(tabId)) {
-          return; // Don't delete here - let the timeout handle it
-        }
-
-        // Skip refresh during close grace period
-        if (this._closeGracePeriod) {
-          return;
-        }
-
-        debouncedRefresh('onRemoved');
-      }},
-      { event: chrome.tabs.onMoved, handler: () => debouncedRefresh('onMoved') },
+      },
+      { event: chrome.tabs.onMoved, handler: debouncedRefresh },
+      { event: chrome.tabs.onAttached, handler: debouncedRefresh },
+      { event: chrome.tabs.onDetached, handler: debouncedRefresh },
+      // Chrome gives a tab a NEW id when it's discarded (Memory Saver) or
+      // prerendered. Without this, the popup kept the old id and "Close" failed
+      // silently with "No tab with id", so the tab came back on next open.
+      { event: chrome.tabs.onReplaced, handler: debouncedRefresh },
       {
         event: chrome.tabs.onUpdated,
         handler: (tabId, changeInfo) => {
-          // Skip refresh during close grace period
-          if (this._closeGracePeriod) {
-            return;
-          }
           // Only refresh on meaningful changes to avoid scroll jumps
           // Skip 'loading' status to prevent jumps during page reloads
           const shouldRefresh = (
@@ -363,13 +380,14 @@ class TabNavigator {
             changeInfo.mutedInfo !== undefined ||
             changeInfo.pinned !== undefined ||
             changeInfo.groupId !== undefined ||
+            changeInfo.discarded !== undefined ||
             (changeInfo.status === 'complete' && !changeInfo.title) ||
             // Only update title if it's not a loading title change
             (changeInfo.title && !changeInfo.title.startsWith('http') && changeInfo.status !== 'loading')
           );
 
           if (shouldRefresh) {
-            debouncedRefresh('onUpdated');
+            debouncedRefresh();
           }
         }
       }
@@ -378,45 +396,114 @@ class TabNavigator {
     if (chrome.tabGroups?.onUpdated) {
       listeners.push({
         event: chrome.tabGroups.onUpdated,
-        handler: () => {
-          // Skip refresh during close grace period
-          if (this._closeGracePeriod) {
-            return;
-          }
-          this.refreshTabList();
+        handler: (group) => {
+          // Group title/colour changed: drop the cached info so it's re-read
+          this.tabManager._groupInfoCache?.delete(group.id);
+          debouncedRefresh();
         }
       });
     }
 
-    listeners.forEach(({ event, handler }) => event.addListener(handler));
+    listeners.forEach(({ event, handler }) => event?.addListener(handler));
     this.cleanupFns.push(() => {
-      listeners.forEach(({ event, handler }) => event.removeListener(handler));
+      listeners.forEach(({ event, handler }) => event?.removeListener(handler));
     });
   }
 
-  async refreshTabList(forceCenter = false, skipIfClosing = true) {
-    // Skip if already rendering
+  /**
+   * Re-read tabs and move the active highlight without a full re-render
+   */
+  async syncActiveTab() {
     if (this._isRendering) {
+      this._renderQueued = true;
+      return;
+    }
+    await this.tabManager.fetchTabs();
+    this._closingTabIds.forEach(id => this.tabManager.forgetTab(id));
+    const activeTab = this.tabManager.getActiveTab();
+    if (activeTab && !this.tabManager.findTabElement(activeTab.id) && !this.tabManager.hasActiveFilters()) {
+      // Active tab isn't in the DOM (e.g. newly created): fall back to a full refresh
+      return this.refreshTabList();
+    }
+    this.tabManager.highlightActiveTab();
+    this.updateCurrentTabInfo();
+    this.updateTabCounter();
+  }
+
+  /**
+   * Close a tab from the dropdown menu.
+   *
+   * The element is removed optimistically for a smooth UX, but the result of
+   * chrome.tabs.remove() is now awaited. Previously it was fire-and-forget,
+   * so when removal failed (stale id after a discard, tab being dragged, ...)
+   * the tab vanished from the popup but stayed open in the browser.
+   * @param {chrome.tabs.Tab} tab
+   */
+  async closeTab(tab) {
+    this._closingTabIds.add(tab.id);
+    this._removeTabElement(tab.id);
+
+    let closed = false;
+    try {
+      await chrome.tabs.remove(tab.id);
+      closed = true;
+    } catch (err) {
+      // The id may be stale because Chrome replaced the tab (discard/prerender).
+      // Look for the same tab (same window, position and URL) under its new id.
+      try {
+        const current = await chrome.tabs.query({ windowId: tab.windowId });
+        const replacement = current.find(t =>
+          t.id !== tab.id && t.index === tab.index && t.url === tab.url);
+        if (replacement) {
+          this._closingTabIds.add(replacement.id);
+          await chrome.tabs.remove(replacement.id);
+          closed = true;
+        } else {
+          console.error('Failed to close tab:', err);
+        }
+      } catch (retryErr) {
+        console.error('Failed to close tab:', retryErr);
+      }
+    }
+
+    if (closed) {
+      this.tabManager.forgetTab(tab.id);
+      this.updateTabCounter();
+      this.updateFilterResults();
+      // Keep the ids briefly so late onRemoved events are recognised as ours
+      setTimeout(() => this._closingTabIds.delete(tab.id), 1000);
+    } else {
+      // Bring the view back in sync with reality: the tab is still open
+      this._closingTabIds.delete(tab.id);
+      await this.refreshTabList(false, true);
+    }
+  }
+
+  async refreshTabList(forceCenter = false, force = false) {
+    // Don't rebuild the DOM under an open dropdown; refresh once it closes
+    if (!force && this.dropdownManager?.isOpen()) {
+      this._refreshDeferred = true;
+      return;
+    }
+    // A refresh requested mid-render is queued instead of silently dropped,
+    // otherwise the popup could keep showing stale tabs (e.g. a closed tab
+    // re-appearing after changing a filter).
+    if (this._isRendering) {
+      this._renderQueued = true;
       return;
     }
     this._isRendering = true;
 
     try {
-      // Skip re-render if we just closed a tab ourselves (DOM already updated)
-      // But only if no filters are active
-      if (skipIfClosing && this._closingTabIds.size > 0 && !this.tabManager.hasActiveFilters()) {
-        // Still update the internal tab list but don't re-render
-        await this.tabManager.fetchTabs();
-        this.updateCurrentTabInfo();
-        return;
-      }
+      await this.tabManager.fetchTabs();
+      // Tabs we're in the middle of closing shouldn't flash back in
+      this._closingTabIds.forEach(id => this.tabManager.forgetTab(id));
 
       // Save scroll anchor before re-render (only if not forcing center)
       const anchor = (this.tabManager.isFirstRender || forceCenter)
         ? null
         : saveScrollAnchor(this.elements.tabContainer);
 
-      await this.tabManager.fetchTabs();
       await this.tabManager.render();
       
       this.updateCurrentTabInfo();
@@ -436,15 +523,18 @@ class TabNavigator {
         // Force center on active tab (e.g., after explicit user actions)
         this.centerOnActiveTabWithRetry(5, 50);
       } else {
-        // Restore previous scroll position after DOM settles
-        requestAnimationFrame(() => {
-          restoreScrollAnchor(this.elements.tabContainer, anchor);
-        });
+        // Restore the previous scroll position synchronously, in the same task
+        // as the DOM swap, so the user never sees (or clicks) an un-scrolled strip
+        restoreScrollAnchor(this.elements.tabContainer, anchor);
       }
     } catch (error) {
       console.error('Error in refreshTabList:', error);
     } finally {
       this._isRendering = false;
+      if (this._renderQueued) {
+        this._renderQueued = false;
+        this.refreshTabList();
+      }
     }
   }
 
@@ -607,14 +697,15 @@ class TabNavigator {
       // Find the group section this tab belongs to
       const groupSection = tabElement.closest('.tab-group-section');
       
-      // Update tab counter immediately
-      const currentCount = parseInt(this.elements.tabCounter.textContent.match(/\d+/)?.[0] || '0');
-      const newCount = Math.max(0, currentCount - 1);
-      const activeIndex = this.tabManager.getTabs().findIndex(t => t.active);
+      // Update tab counter immediately (computed from the tab list; the old
+      // code parsed the first number out of "On tab X of Y", i.e. X, and
+      // produced things like "On tab 36 of 35")
+      const remaining = this.tabManager.getTabs().filter(t => t.id !== tabId);
+      const activeIndex = remaining.findIndex(t => t.active);
       if (this.settings.showIndices && activeIndex >= 0) {
-        this.elements.tabCounter.textContent = `On tab ${activeIndex + 1} of ${newCount}`;
+        this.elements.tabCounter.textContent = `On tab ${activeIndex + 1} of ${remaining.length}`;
       } else {
-        this.elements.tabCounter.textContent = `${newCount} tabs`;
+        this.elements.tabCounter.textContent = `${remaining.length} tabs`;
       }
       
       // Remove after animation completes
@@ -634,21 +725,18 @@ class TabNavigator {
             }
           }
         }
-        
-        // Clean up tracking
-        this._closingTabIds.delete(tabId);
       }, 200);
     }
   }
 }
 
-// Initialize
-const navigator = new TabNavigator();
-document.addEventListener('DOMContentLoaded', () => navigator.init());
+// Initialize (named `app`, not `navigator`, so it doesn't shadow window.navigator)
+const app = new TabNavigator();
+document.addEventListener('DOMContentLoaded', () => app.init());
 
 // Cleanup when popup is hidden/closed
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
-    navigator.destroy();
+    app.destroy();
   }
 });

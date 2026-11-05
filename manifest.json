@@ -3,7 +3,12 @@
   "name": "Scrollable Tabs",
   "version": "0.4.0",
   "description": "Extension port for scrollable tab strip experimental feature of chrome",
-  "permissions": ["tabs", "storage", "tabGroups"],
+  "permissions": [
+    "tabs",
+    "storage",
+    "tabGroups",
+    "favicon"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"

@@ -1,8 +1,11 @@
 /** @fileoverview Tab management and rendering */
 
 import { CLASSES, ICONS } from './constants.js';
-import { createElement, resolveGroupColor, getCachedFaviconUrl, getHostname } from './uiUtils.js';
+import { createElement, resolveGroupColor, getHostname } from './uiUtils.js';
 import { createDropdownMenu } from './dropdownManager.js';
+
+/** chrome.tabGroups.TAB_GROUP_ID_NONE (-1), without depending on the API being present */
+const NO_GROUP = chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
 
 /**
  * Tab manager class
@@ -49,6 +52,14 @@ export class TabManager {
    */
   getTabs() {
     return this.tabs;
+  }
+
+  /**
+   * Drop a tab from the cached list (after it was closed) without re-fetching
+   * @param {number} tabId - Tab ID
+   */
+  forgetTab(tabId) {
+    this.tabs = this.tabs.filter(t => t.id !== tabId);
   }
 
   /**
@@ -118,8 +129,8 @@ export class TabManager {
       filtered = filtered.filter(tab => {
         if (radioFilter === 'audio') return tab.audible || tab.mutedInfo?.muted;
         if (radioFilter === 'pinned') return tab.pinned;
-        if (radioFilter === 'grouped') return tab.groupId && tab.groupId !== chrome.tabs.TAB_ID_NONE;
-        if (radioFilter === 'ungrouped') return !tab.groupId || tab.groupId === chrome.tabs.TAB_ID_NONE;
+        if (radioFilter === 'grouped') return tab.groupId && tab.groupId !== NO_GROUP;
+        if (radioFilter === 'ungrouped') return !tab.groupId || tab.groupId === NO_GROUP;
         return true;
       });
     }
@@ -148,31 +159,43 @@ export class TabManager {
    * Render all tabs (or filtered tabs if filters are active)
    */
   async render() {
-    this.container.innerHTML = '';
+    // Build the new strip off-DOM and swap it in with a single replaceChildren().
+    // Previously the container was emptied first and then filled across several
+    // awaits (tab group lookups), so for a moment the strip was empty / scrolled
+    // to 0 with the pinned tabs under the cursor; a click landing in that window
+    // activated the wrong (often pinned) tab or missed the dropdown entirely.
+    const target = document.createDocumentFragment();
+    this._renderTarget = target;
 
     const tabsToRender = this.hasActiveFilters() ? this.getFilteredTabs() : this.tabs;
 
     if (tabsToRender.length === 0 && this.hasActiveFilters()) {
       this._renderNoResults();
+      this.container.replaceChildren(target);
       return;
     }
 
     const { pinnedTabs, unpinnedTabs } = this._categorizeTabs(tabsToRender);
-    const { groupedTabs, ungroupedTabs } = this._groupTabs(unpinnedTabs);
+    const { groupedTabs } = this._groupTabs(unpinnedTabs);
     const sortedGroups = this._sortGroups(groupedTabs);
+
+    // Pre-fetch group info so the build below doesn't wait per section
+    await Promise.all(Object.keys(groupedTabs).map(id => this._fetchGroupInfo(Number(id))));
 
     // Render pinned section
     if (pinnedTabs.length > 0) {
       const pinnedSection = await this._createGroupSection('pinned', pinnedTabs, 'Pinned', true);
-      this.container.appendChild(pinnedSection);
-      this.container.appendChild(this._createDivider());
+      target.appendChild(pinnedSection);
+      target.appendChild(this._createDivider());
     }
 
     // Render unpinned tabs in order
     await this._renderUnpinnedTabs(unpinnedTabs, sortedGroups);
+
+    this.container.replaceChildren(target);
   }
 
-_renderNoResults() {
+  _renderNoResults() {
     const boxWidth = 48;
     const boxGap = 4;
     const totalBox = boxWidth + boxGap;
@@ -291,7 +314,7 @@ _renderNoResults() {
 
     container.appendChild(ghostRow);
     container.appendChild(iconWrapper);
-    this.container.appendChild(container);
+    this._renderTarget.appendChild(container);
   }
 
   /**
@@ -351,7 +374,7 @@ _renderNoResults() {
     const ungroupedTabs = [];
 
     unpinnedTabs.forEach(tab => {
-      if (tab.groupId && tab.groupId !== chrome.tabs.TAB_ID_NONE) {
+      if (tab.groupId && tab.groupId !== NO_GROUP) {
         if (!groupedTabs[tab.groupId]) {
           groupedTabs[tab.groupId] = [];
         }
@@ -378,7 +401,7 @@ _renderNoResults() {
     let currentUngroupedTabs = [];
 
     for (const tab of unpinnedTabs) {
-      const tabGroupId = tab.groupId && tab.groupId !== chrome.tabs.TAB_ID_NONE ? tab.groupId : null;
+      const tabGroupId = tab.groupId && tab.groupId !== NO_GROUP ? tab.groupId : null;
 
       if (tabGroupId) {
         if (currentGroupId === tabGroupId) {
@@ -404,12 +427,12 @@ _renderNoResults() {
   async _flushPendingSections(ungroupedTabs, groupTabs, groupId) {
     if (ungroupedTabs.length > 0) {
       const section = await this._createGroupSection('ungrouped', ungroupedTabs, 'Other Tabs', false);
-      this.container.appendChild(section);
+      this._renderTarget.appendChild(section);
       ungroupedTabs.length = 0; // Clear the array
     }
     if (groupTabs.length > 0) {
       const section = await this._createGroupSection(groupId, groupTabs, `Group ${groupId}`, false);
-      this.container.appendChild(section);
+      this._renderTarget.appendChild(section);
       groupTabs.length = 0; // Clear the array
     }
   }
@@ -559,25 +582,26 @@ _renderNoResults() {
     const favicon = createElement('img', {
       className: CLASSES.FAVICON
     });
+    const fallback = chrome.runtime.getURL('assets/default-favicon.svg');
 
-    const faviconUrl = tab.favIconUrl && 
-      !tab.favIconUrl.startsWith('chrome://') &&
-      !tab.favIconUrl.startsWith('chrome-extension://') &&
-      !tab.favIconUrl.startsWith('data:') &&
-      tab.favIconUrl.length > 0 &&
-      tab.favIconUrl.length < 2048
-      ? tab.favIconUrl
-      : null;
-
-    if (faviconUrl) {
-      favicon.src = getCachedFaviconUrl(faviconUrl);
-      
-      favicon.onerror = () => {
-        favicon.src = chrome.runtime.getURL('assets/default-favicon.svg');
-      };
+    // Use Chrome's built-in favicon cache (requires the "favicon" permission).
+    // This avoids making network requests from the extension page to whatever
+    // host a tab's favIconUrl points at (privacy leak / tracking pixel), and it
+    // also works for data: and chrome:// favicons.
+    const pageUrl = tab.url || tab.pendingUrl;
+    if (pageUrl) {
+      const url = new URL(chrome.runtime.getURL('/_favicon/'));
+      url.searchParams.set('pageUrl', pageUrl);
+      url.searchParams.set('size', '32');
+      favicon.src = url.toString();
     } else {
-      favicon.src = chrome.runtime.getURL('assets/default-favicon.svg');
+      favicon.src = fallback;
     }
+
+    favicon.onerror = () => {
+      favicon.onerror = null;
+      favicon.src = fallback;
+    };
 
     return favicon;
   }
@@ -596,7 +620,7 @@ _renderNoResults() {
   }
 
   async _addGroupIndicator(div, tab) {
-    if (tab.groupId && tab.groupId !== chrome.tabs.TAB_ID_NONE && chrome.tabGroups) {
+    if (tab.groupId && tab.groupId !== NO_GROUP && chrome.tabGroups) {
       const groupInfo = await this._fetchGroupInfo(tab.groupId);
       if (groupInfo) {
         const resolved = resolveGroupColor(groupInfo.color) || resolveGroupColor('blue');

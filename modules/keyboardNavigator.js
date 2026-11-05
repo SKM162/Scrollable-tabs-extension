@@ -12,6 +12,16 @@ import { KEYS } from './constants.js';
  */
 export function createKeyboardNavigator({ getTabs, onTabChange, onClose }) {
   return function handleKeyboard(e) {
+    // Never hijack keys while the user is typing (e.g. Home/End/arrows in the
+    // search box used to switch the browser to the first/pinned tab), and
+    // leave modified shortcuts (Cmd/Ctrl/Alt + key) to the browser.
+    if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+    const target = e.target;
+    if (target instanceof HTMLElement &&
+        (target.isContentEditable || target.closest('input, textarea, select'))) {
+      return;
+    }
+
     const tabs = getTabs();
     const currentIndex = tabs.findIndex(t => t.active);
     if (currentIndex === -1) return;

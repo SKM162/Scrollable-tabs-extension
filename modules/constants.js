@@ -33,7 +33,7 @@ export const POPUP_DIMENSIONS = {
 
 /** Scroll configuration */
 export const SCROLL_CONFIG = {
-  PRIORITY_MS: 600,
+  PRIORITY_MS: 150,
   BEHAVIOR: 'auto'
 };
 
