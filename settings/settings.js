@@ -1,6 +1,9 @@
 /** @fileoverview Settings Page Logic */
 
 import { loadSettings, saveSettings } from '../utils/storage.js';
+import { installErrorLog } from '../utils/errorLog.js';
+
+installErrorLog('settings');
 
 const DEFAULT_SETTINGS = {
   popupWidth: 800,

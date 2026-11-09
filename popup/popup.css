@@ -1297,3 +1297,29 @@ body {
   transform: none;
   background: #b71c1c;
 }
+
+/* Bug report button */
+.bug-report-btn {
+  background: var(--theme-btn-bg);
+  border: 1px solid var(--theme-btn-border);
+  border-radius: 3px;
+  padding: 4px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-color);
+  transition: all 0.2s ease;
+}
+
+.bug-report-btn:hover {
+  background: var(--theme-btn-hover);
+  border-color: var(--border-tab-hover);
+}
+
+.bug-report-btn svg {
+  width: 100%;
+  height: 100%;
+}

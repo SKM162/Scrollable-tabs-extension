@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a bug · Scrollable Tabs</title>
+  <link rel="stylesheet" href="../settings/settings.css">
+  <link rel="stylesheet" href="feedback.css">
+</head>
+<body>
+  <div class="settings-container">
+    <header class="settings-header">
+      <div class="settings-title">
+        <div class="settings-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="8" y="6" width="8" height="14" rx="4"/>
+            <path d="M19 7l-3 2M5 7l3 2M19 13h-3M5 13h3M19 19l-3-2M5 19l3-2M10 4l1 2M14 4l-1 2"/>
+          </svg>
+        </div>
+        <h1>Send feedback</h1>
+      </div>
+    </header>
+
+    <main>
+      <form id="feedbackForm" class="settings-card" novalidate>
+        <div class="field">
+          <label class="setting-label" for="type">Type</label>
+          <select id="type" class="drop-down">
+            <option value="bug">Bug report</option>
+            <option value="feature">Feature request</option>
+            <option value="question">Question / other</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="setting-label" for="title">Title <span class="req">*</span></label>
+          <input id="title" class="text-input" type="text" maxlength="120" required
+                 placeholder="Short summary, e.g. Closed tab reappears after reopening the popup">
+          <div class="field-error" id="titleError">Please add a short title.</div>
+        </div>
+
+        <div class="field">
+          <label class="setting-label" for="description" id="descriptionLabel">What happened? <span class="req">*</span></label>
+          <textarea id="description" class="text-input" rows="4" maxlength="3000" required
+                    placeholder="Describe the problem"></textarea>
+          <div class="field-error" id="descriptionError">Please describe the issue.</div>
+        </div>
+
+        <div class="field bug-only">
+          <label class="setting-label" for="steps">Steps to reproduce</label>
+          <textarea id="steps" class="text-input" rows="3" maxlength="2000"
+                    placeholder="1. Open the popup&#10;2. Select 3 tabs&#10;3. Click close"></textarea>
+        </div>
+
+        <div class="field bug-only">
+          <label class="setting-label" for="expected">Expected behaviour</label>
+          <textarea id="expected" class="text-input" rows="2" maxlength="1000"
+                    placeholder="What did you expect to happen?"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" id="includeDiagnostics" checked>
+            <span>Include diagnostic info <span class="hint">(extension version, browser, settings, tab counts &mdash; no tab titles or URLs)</span></span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="includeErrors" checked>
+            <span>Include recent errors <span class="hint" id="errorCount"></span></span>
+          </label>
+        </div>
+
+        <details class="preview">
+          <summary>Preview what will be posted</summary>
+          <pre id="preview"></pre>
+        </details>
+
+        <p class="note" id="truncatedNote" hidden>The report is long, so some diagnostic details were shortened to fit in a GitHub link.</p>
+
+        <div class="actions-bar">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Continue on GitHub</button>
+        </div>
+        <p class="note">
+          This opens a pre-filled issue on
+          <a href="https://github.com/SKM162/Scrollable-tabs-extension/issues" target="_blank" rel="noopener noreferrer">GitHub</a>.
+          Review it and click <strong>Create</strong> there (a GitHub account is needed). Nothing is sent until you do.
+        </p>
+      </form>
+    </main>
+  </div>
+
+  <script type="module" src="feedback.js"></script>
+</body>
+</html>

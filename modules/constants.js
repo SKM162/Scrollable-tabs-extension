@@ -69,6 +69,7 @@ export const SELECTORS = {
   SCROLL_PAGE_FWD_BTN: '#scrollPageFwdBtn',
   SCROLL_LAST_BTN: '#scrollLastBtn',
   SELECTION_MODE_BTN: '#selectionModeBtn',
+  BUG_REPORT_BTN: '#bugReportBtn',
   SEARCH_INPUT: '#searchInput',
   FILTER_RESULTS: '#filterResults',
   FILTER_DROPDOWN: '#filterDropdown',
@@ -172,5 +173,6 @@ export const ICONS = {
   PIN_TABS: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 2l4 4-6 6-2-2-2 6 6-2-2-2 6-6-4-4z" stroke="#363636" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   NEW_WINDOW_TABS: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="14" rx="2" stroke="#363636" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="#363636" stroke-width="2" stroke-linecap="round"/></svg>',
   SELECT_ALL: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#363636" stroke-width="2"/><path d="M9 12l2 2 4-4" stroke="#363636" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  DESELECT_ALL: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#363636" stroke-width="2"/><path d="M15 9l-6 6M9 9l6 6" stroke="#363636" stroke-width="2" stroke-linecap="round"/></svg>'
+  DESELECT_ALL: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#363636" stroke-width="2"/><path d="M15 9l-6 6M9 9l6 6" stroke="#363636" stroke-width="2" stroke-linecap="round"/></svg>',
+  BUG: '<svg class="bug-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M19 7l-3 2M5 7l3 2M19 13h-3M5 13h3M19 19l-3-2M5 19l3-2M10 4l1 2M14 4l-1 2"/></svg>'
 }

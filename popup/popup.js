@@ -25,6 +25,9 @@ import {
   $$
 } from '../modules/index.js';
 import { loadSettings, saveSettings } from '../utils/storage.js';
+import { installErrorLog } from '../utils/errorLog.js';
+
+installErrorLog('popup');
 
 class TabNavigator {
   constructor() {
@@ -78,6 +81,7 @@ class TabNavigator {
       clearFiltersBtn: $(SELECTORS.CLEAR_FILTERS_BTN),
       clearFiltersBtnInline: $(SELECTORS.CLEAR_FILTERS_BTN_INLINE),
       selectionModeBtn: $(SELECTORS.SELECTION_MODE_BTN),
+      bugReportBtn: $(SELECTORS.BUG_REPORT_BTN),
       selectionBar: $('#selectionBar'),
       selectAllBtn: $('#selectAllBtn'),
       deselectAllBtn: $('#deselectAllBtn'),
@@ -109,6 +113,7 @@ class TabNavigator {
     setIcon(this.elements.clearFiltersBtnInline, 'CLEAR_FILTER');
     setIcon(this.elements.tabCounterWrapper?.querySelector('.tab-counter-icon'), 'TAB_COUNTER');
     setIcon(this.elements.selectionModeBtn, 'SELECT');
+    setIcon(this.elements.bugReportBtn, 'BUG');
     setIcon(this.elements.selectAllBtn, 'SELECT_ALL');
     setIcon(this.elements.deselectAllBtn, 'DESELECT_ALL');
     setIcon(this.elements.batchCloseBtn, 'CLOSE_TABS');
@@ -279,6 +284,12 @@ class TabNavigator {
     // Any click elsewhere cancels a pending "confirm close"
     document.addEventListener('click', (e) => {
       if (!this.elements.batchCloseBtn?.contains(e.target)) this.cancelCloseConfirmation();
+    });
+
+    // Bug report / feedback form (opens in a tab; the popup is too small for a form)
+    this.elements.bugReportBtn?.addEventListener('click', async () => {
+      await chrome.tabs.create({ url: chrome.runtime.getURL('feedback/feedback.html') });
+      window.close();
     });
 
     // Settings button
