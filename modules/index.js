@@ -6,3 +6,5 @@ export * from './keyboardNavigator.js';
 export * from './dropdownManager.js';
 export * from './scrollManager.js';
 export * from './tabManager.js';
+export * from './selectionManager.js';
+export * from './tabApi.js';

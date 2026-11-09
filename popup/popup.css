@@ -1095,3 +1095,205 @@ body {
   background: var(--divider-color);
   margin: 0 2px;
 }
+
+/* Selection mode button */
+.selection-mode-btn {
+  background: var(--theme-btn-bg);
+  border: 1px solid var(--theme-btn-border);
+  border-radius: 3px;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-color);
+}
+
+.selection-mode-btn:hover {
+  background: var(--theme-btn-hover);
+  border-color: var(--border-tab-hover);
+}
+
+.selection-mode-btn svg {
+  width: 100%;
+  height: 100%;
+  color: var(--icon-color);
+}
+
+.selection-mode-btn svg path {
+  fill: var(--icon-color) !important;
+}
+
+.selection-mode-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.selection-mode-btn.active svg path {
+  fill: white !important;
+}
+
+/* Selection mode styles */
+.popup-container.selection-mode .tab-item {
+  cursor: pointer;
+}
+
+.tab-item.selected-tab {
+  background: var(--accent-bg);
+  border-color: var(--accent-color);
+  border-width: 2px;
+  border-style: dashed;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.25);
+}
+
+.tab-item.selected-tab.active-tab {
+  border-width: 3px;
+  border-style: solid;
+  box-shadow: 0 3px 10px rgba(26, 115, 232, 0.4);
+}
+
+.tab-item.selected-tab.closing {
+  animation: tabFadeOutSelected 0.2s ease forwards;
+}
+
+@keyframes tabFadeOutSelected {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.85);
+    width: 0;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+.selection-checkmark {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-color);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.15s ease;
+  z-index: 10;
+}
+
+.tab-item.selected-tab .selection-checkmark {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkmark-icon {
+  width: 12px;
+  height: 12px;
+  color: white;
+}
+
+.selection-checkmark svg {
+  width: 100%;
+  height: 100%;
+  color: white;
+}
+
+.selection-checkmark svg path {
+  fill: white !important;
+}
+
+/* Selection action bar */
+.selection-bar {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border-left: 2px solid var(--accent-color);
+  flex-shrink: 0;
+  margin-left: 8px;
+  animation: selectionBarSlideIn 0.2s ease;
+}
+
+@keyframes selectionBarSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.popup-container.selection-mode .selection-bar {
+  display: flex;
+}
+
+.selection-bar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--divider-color);
+  margin: 0 2px;
+}
+
+.selection-action-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.selection-action-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-tab-hover);
+  transform: scale(1.05);
+}
+
+.selection-action-btn svg path,
+.selection-action-btn svg line {
+  stroke: var(--text-primary);
+}
+
+.selection-action-btn svg path[fill] {
+  fill: var(--text-primary);
+}
+
+#batchCloseBtn:hover svg path,
+#batchCloseBtn:hover svg line {
+  stroke: #d32f2f;
+}
+/* Two-step confirmation for closing many / all tabs */
+#batchCloseBtn.confirming {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #fff;
+  background: #d32f2f;
+  border-color: #d32f2f;
+}
+
+#batchCloseBtn.confirming:hover {
+  transform: none;
+  background: #b71c1c;
+}

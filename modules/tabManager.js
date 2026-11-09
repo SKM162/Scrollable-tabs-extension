@@ -2,7 +2,18 @@
 
 import { CLASSES, ICONS } from './constants.js';
 import { createElement, resolveGroupColor, getHostname } from './uiUtils.js';
-import { createDropdownMenu } from './dropdownManager.js';
+
+/** Parse each SVG icon once and clone it, instead of re-parsing innerHTML per tab */
+const iconTemplates = new Map();
+function iconNode(name) {
+  let tpl = iconTemplates.get(name);
+  if (!tpl) {
+    tpl = document.createElement('template');
+    tpl.innerHTML = ICONS[name];
+    iconTemplates.set(name, tpl);
+  }
+  return tpl.content.cloneNode(true);
+}
 
 /** chrome.tabGroups.TAB_GROUP_ID_NONE (-1), without depending on the API being present */
 const NO_GROUP = chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
@@ -19,6 +30,8 @@ export class TabManager {
     this.onTabHover = options.onTabHover || (() => {});
     this.onTabHoverEnd = options.onTabHoverEnd || (() => {});
     this.onDropdownAction = options.onDropdownAction || (() => {});
+    this.isSelected = options.isSelected || (() => false);
+    this.onSectionToggle = options.onSectionToggle || (() => {});
     this.isFirstRender = true;
     this._groupInfoCache = new Map();
     this.filters = {
@@ -388,11 +401,9 @@ export class TabManager {
   }
 
   _sortGroups(groupedTabs) {
-    return Object.entries(groupedTabs).sort(([groupIdA, tabsA], [groupIdB, tabsB]) => {
-      const minIndexA = Math.min(...tabsA.map(t => this.tabs.findIndex(orig => orig.id === t.id)));
-      const minIndexB = Math.min(...tabsB.map(t => this.tabs.findIndex(orig => orig.id === t.id)));
-      return minIndexA - minIndexB;
-    });
+    const position = new Map(this.tabs.map((t, i) => [t.id, i]));
+    const firstIndex = (tabs) => Math.min(...tabs.map(t => position.get(t.id) ?? Infinity));
+    return Object.entries(groupedTabs).sort(([, tabsA], [, tabsB]) => firstIndex(tabsA) - firstIndex(tabsB));
   }
 
   async _renderUnpinnedTabs(unpinnedTabs, sortedGroups) {
@@ -520,6 +531,7 @@ export class TabManager {
       section.classList.toggle(CLASSES.COLLAPSED);
       const btn = header.querySelector('.collapse-btn');
       btn.textContent = section.classList.contains(CLASSES.COLLAPSED) ? '▼' : '◀';
+      this.onSectionToggle(section);
     });
 
     return header;
@@ -533,6 +545,11 @@ export class TabManager {
 
     if (tab.active) {
       div.classList.add(CLASSES.ACTIVE_TAB);
+    }
+    // Selection state is applied while building, so re-renders (tab updates,
+    // filtering, scrolling-triggered refreshes) never drop the selection.
+    if (this.isSelected(tab.id)) {
+      div.classList.add(CLASSES.SELECTED_TAB);
     }
 
     // Favicon
@@ -555,6 +572,11 @@ export class TabManager {
     // Indicators
     this._addIndicators(div, tab);
 
+    // Selection checkmark overlay
+    const checkmark = createElement('span', { className: CLASSES.SELECTION_CHECKMARK });
+    checkmark.appendChild(iconNode('CHECKMARK'));
+    div.appendChild(checkmark);
+
     // Dropdown
     this._addDropdown(div, tab);
 
@@ -571,8 +593,8 @@ export class TabManager {
       }
     });
 
-    div.addEventListener('click', () => {
-      this.onTabClick(tab.id);
+    div.addEventListener('click', (e) => {
+      this.onTabClick(tab.id, e);
     });
 
     return div;
@@ -634,19 +656,21 @@ export class TabManager {
 
   _addIndicators(div, tab) {
     if (tab.pinned) {
-      div.appendChild(createElement('span', {
+      const pin = createElement('span', {
         className: `${CLASSES.INDICATOR} ${CLASSES.PIN_INDICATOR}`,
-        innerHTML: ICONS.PIN,
         attributes: { title: 'Pinned' }
-      }));
+      });
+      pin.appendChild(iconNode('PIN'));
+      div.appendChild(pin);
     }
 
     if (tab.audible) {
-      div.appendChild(createElement('span', {
+      const audio = createElement('span', {
         className: `${CLASSES.INDICATOR} ${CLASSES.AUDIO_INDICATOR}`,
-        innerHTML: ICONS.UNMUTE,
         attributes: { title: 'Audio playing' }
-      }));
+      });
+      audio.appendChild(iconNode('UNMUTE'));
+      div.appendChild(audio);
     }
   }
 
@@ -663,12 +687,7 @@ export class TabManager {
     });
 
     div.appendChild(dropdownBtn);
-
-    const dropdownMenu = createDropdownMenu(tab, (action, t) => {
-      this.onDropdownAction(action, t);
-    });
-
-    div.appendChild(dropdownMenu);
+    // The menu itself is created lazily by DropdownManager when opened
   }
 
   _createDivider() {
@@ -702,6 +721,34 @@ export class TabManager {
       };
     }
     return { title: 'No active tab', hostname: '' };
+  }
+
+  /**
+   * Tabs the user can currently see, in display order: rendered after
+   * search/filter and not inside a collapsed group. Selection operations
+   * (select all, shift-range) and batch actions are limited to these.
+   * @returns {chrome.tabs.Tab[]}
+   */
+  getVisibleTabs() {
+    const byId = new Map(this.tabs.map(t => [t.id, t]));
+    const result = [];
+    this.container.querySelectorAll(`.${CLASSES.TAB_ITEM}`).forEach(el => {
+      if (el.classList.contains('closing')) return;
+      if (el.closest(`.${CLASSES.COLLAPSIBLE_SECTION}.${CLASSES.COLLAPSED}`)) return;
+      const tab = byId.get(Number(el.dataset.tabId));
+      if (tab) result.push(tab);
+    });
+    return result;
+  }
+
+  /**
+   * Update selection state on rendered tab elements
+   * @param {Set<number>} selectedTabIds
+   */
+  updateSelectionState(selectedTabIds) {
+    this.container.querySelectorAll(`.${CLASSES.TAB_ITEM}`).forEach(el => {
+      el.classList.toggle(CLASSES.SELECTED_TAB, selectedTabIds.has(Number(el.dataset.tabId)));
+    });
   }
 
   /**

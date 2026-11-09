@@ -10,11 +10,16 @@ import {
   TabManager,
   ScrollManager,
   DropdownManager,
+  SelectionManager,
+  createDropdownMenu,
   createKeyboardNavigator,
   enableKeyboardNavigation,
   saveScrollAnchor,
   restoreScrollAnchor,
   handleDropdownAction,
+  withTabEditRetry,
+  removeTabs,
+  showMessage,
   setIcon,
   $,
   $$
@@ -27,6 +32,7 @@ class TabNavigator {
     this.tabManager = null;
     this.scrollManager = null;
     this.dropdownManager = null;
+    this.selectionManager = null;
     this.keyboardHandler = null;
     this.cleanupFns = [];
     this.elements = {};
@@ -36,14 +42,18 @@ class TabNavigator {
     // Cache DOM elements after DOM is ready
     this.cacheElements();
     
+    // Start the tab query while settings load instead of one after the other
+    const tabsPromise = chrome.tabs.query({ currentWindow: true }).catch(() => null);
     await this.loadSettings();
     this.setupTheme();
     this.setupIcons();
     this.setupDimensions();
     this.setupManagers();
     this.setupEventListeners();
-    
-    await this.refreshTabList();
+
+    const initialTabs = await tabsPromise;
+    if (initialTabs) this.tabManager.tabs = initialTabs;
+    await this.refreshTabList(false, false, { skipFetch: !!initialTabs });
   }
   
   cacheElements() {
@@ -66,7 +76,15 @@ class TabNavigator {
       filterMenu: $(SELECTORS.FILTER_MENU),
       filterResults: $(SELECTORS.FILTER_RESULTS),
       clearFiltersBtn: $(SELECTORS.CLEAR_FILTERS_BTN),
-      clearFiltersBtnInline: $(SELECTORS.CLEAR_FILTERS_BTN_INLINE)
+      clearFiltersBtnInline: $(SELECTORS.CLEAR_FILTERS_BTN_INLINE),
+      selectionModeBtn: $(SELECTORS.SELECTION_MODE_BTN),
+      selectionBar: $('#selectionBar'),
+      selectAllBtn: $('#selectAllBtn'),
+      deselectAllBtn: $('#deselectAllBtn'),
+      batchCloseBtn: $('#batchCloseBtn'),
+      batchMuteBtn: $('#batchMuteBtn'),
+      batchPinBtn: $('#batchPinBtn'),
+      batchWindowBtn: $('#batchWindowBtn')
     };
   }
 
@@ -90,6 +108,13 @@ class TabNavigator {
     setIcon(this.elements.filterBtn, 'FILTER');
     setIcon(this.elements.clearFiltersBtnInline, 'CLEAR_FILTER');
     setIcon(this.elements.tabCounterWrapper?.querySelector('.tab-counter-icon'), 'TAB_COUNTER');
+    setIcon(this.elements.selectionModeBtn, 'SELECT');
+    setIcon(this.elements.selectAllBtn, 'SELECT_ALL');
+    setIcon(this.elements.deselectAllBtn, 'DESELECT_ALL');
+    setIcon(this.elements.batchCloseBtn, 'CLOSE_TABS');
+    setIcon(this.elements.batchMuteBtn, 'MUTE_TABS');
+    setIcon(this.elements.batchPinBtn, 'PIN_TABS');
+    setIcon(this.elements.batchWindowBtn, 'NEW_WINDOW_TABS');
   }
 
   applyTheme(themeSetting) {
@@ -139,13 +164,38 @@ class TabNavigator {
     // Once the user scrolls/clicks we stop auto-centering on 'resize'
     this._userInteracted = false;
 
+    // Selection manager
+    this.selectionManager = new SelectionManager({
+      onSelectionChange: (selectedTabs) => {
+        this.tabManager.updateSelectionState(new Set(selectedTabs));
+        this.cancelCloseConfirmation();
+        this.updateSelectionInfo();
+      },
+      onSelectionModeChange: (isActive) => {
+        this.elements.popupContainer.classList.toggle(CLASSES.SELECTION_MODE, isActive);
+        this.elements.selectionModeBtn?.classList.toggle(CLASSES.ACTIVE, isActive);
+        if (this.elements.selectionModeBtn) {
+          this.elements.selectionModeBtn.title = isActive ? 'Exit selection mode (Esc)' : 'Select multiple tabs';
+        }
+        this.cancelCloseConfirmation();
+        this.updateSelectionInfo();
+      }
+    });
+
     // Tab manager
     this.tabManager = new TabManager({
       container: this.elements.tabContainer,
       settings: this.settings,
-      onTabClick: async (tabId) => {
+      isSelected: (tabId) => this.selectionManager.isSelected(tabId),
+      onSectionToggle: () => this.pruneSelectionToVisible(),
+      onTabClick: async (tabId, event) => {
+        if (this.selectionManager.isInSelectionMode() ||
+            event?.ctrlKey || event?.metaKey || event?.shiftKey) {
+          this.selectionManager.toggleTab(tabId, event, this.tabManager.getVisibleTabs());
+          return;
+        }
         try {
-          await chrome.tabs.update(tabId, { active: true });
+          await withTabEditRetry(() => chrome.tabs.update(tabId, { active: true }));
         } catch (err) {
           console.error('Failed to activate tab:', err);
         }
@@ -176,6 +226,9 @@ class TabNavigator {
 
     // Dropdown manager
     this.dropdownManager = new DropdownManager({
+      createMenu: (tab) => createDropdownMenu(tab, (action, t) => {
+        this.tabManager.onDropdownAction(action, t);
+      }),
       onClose: () => {
         if (this._refreshDeferred) {
           this._refreshDeferred = false;
@@ -189,14 +242,45 @@ class TabNavigator {
     if (this.settings.keyboardNav) {
       this.keyboardHandler = createKeyboardNavigator({
         getTabs: () => this.tabManager.getTabs(),
-        onTabChange: (tabId) => chrome.tabs.update(tabId, { active: true }),
-        onClose: () => window.close()
+        onTabChange: (tabId) => withTabEditRetry(() => chrome.tabs.update(tabId, { active: true }))
+          .catch(err => console.error('Failed to activate tab:', err)),
+        onClose: () => window.close(),
+        onSelectAll: () => this.selectAllVisible(),
+        onEscape: () => {
+          if (this.dropdownManager.isOpen()) {
+            this.dropdownManager.closeAll();
+            return true;
+          }
+          if (this.selectionManager.isInSelectionMode()) {
+            this.selectionManager.exitSelectionMode();
+            return true;
+          }
+          return false;
+        }
       });
       this.cleanupFns.push(enableKeyboardNavigation(this.keyboardHandler));
     }
   }
 
   setupEventListeners() {
+    // Selection mode + batch actions
+    this.elements.selectionModeBtn?.addEventListener('click', () => {
+      this.selectionManager.toggleSelectionMode();
+    });
+    this.elements.selectAllBtn?.addEventListener('click', () => this.selectAllVisible());
+    this.elements.deselectAllBtn?.addEventListener('click', () => this.selectionManager.deselectAll());
+    this.elements.batchCloseBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.batchCloseSelected();
+    });
+    this.elements.batchMuteBtn?.addEventListener('click', () => this.batchMuteSelected());
+    this.elements.batchPinBtn?.addEventListener('click', () => this.batchPinSelected());
+    this.elements.batchWindowBtn?.addEventListener('click', () => this.batchMoveToWindow());
+    // Any click elsewhere cancels a pending "confirm close"
+    document.addEventListener('click', (e) => {
+      if (!this.elements.batchCloseBtn?.contains(e.target)) this.cancelCloseConfirmation();
+    });
+
     // Settings button
     $(SELECTORS.SETTINGS_BTN)?.addEventListener('click', () => {
       chrome.runtime.openOptionsPage();
@@ -441,11 +525,12 @@ class TabNavigator {
    */
   async closeTab(tab) {
     this._closingTabIds.add(tab.id);
+    this.selectionManager.deselectTab(tab.id);
     this._removeTabElement(tab.id);
 
     let closed = false;
     try {
-      await chrome.tabs.remove(tab.id);
+      await withTabEditRetry(() => chrome.tabs.remove(tab.id));
       closed = true;
     } catch (err) {
       // The id may be stale because Chrome replaced the tab (discard/prerender).
@@ -456,7 +541,7 @@ class TabNavigator {
           t.id !== tab.id && t.index === tab.index && t.url === tab.url);
         if (replacement) {
           this._closingTabIds.add(replacement.id);
-          await chrome.tabs.remove(replacement.id);
+          await withTabEditRetry(() => chrome.tabs.remove(replacement.id));
           closed = true;
         } else {
           console.error('Failed to close tab:', err);
@@ -479,7 +564,7 @@ class TabNavigator {
     }
   }
 
-  async refreshTabList(forceCenter = false, force = false) {
+  async refreshTabList(forceCenter = false, force = false, { skipFetch = false } = {}) {
     // Don't rebuild the DOM under an open dropdown; refresh once it closes
     if (!force && this.dropdownManager?.isOpen()) {
       this._refreshDeferred = true;
@@ -495,7 +580,7 @@ class TabNavigator {
     this._isRendering = true;
 
     try {
-      await this.tabManager.fetchTabs();
+      if (!skipFetch) await this.tabManager.fetchTabs();
       // Tabs we're in the middle of closing shouldn't flash back in
       this._closingTabIds.forEach(id => this.tabManager.forgetTab(id));
 
@@ -505,6 +590,9 @@ class TabNavigator {
         : saveScrollAnchor(this.elements.tabContainer);
 
       await this.tabManager.render();
+      // Drop selected tabs that were closed elsewhere or are now hidden by the
+      // search/filter, so batch actions only ever touch tabs on screen.
+      this.pruneSelectionToVisible();
       
       this.updateCurrentTabInfo();
       this.updateTabCounter();
@@ -608,6 +696,10 @@ class TabNavigator {
   }
 
   updateCurrentTabInfo() {
+    if (this.selectionManager?.isInSelectionMode()) {
+      this.updateSelectionInfo();
+      return;
+    }
     const info = this.tabManager.getCurrentTabInfo();
     if (this.elements.currentTabTitle) {
       this.elements.currentTabTitle.textContent = info.title;
@@ -670,6 +762,192 @@ class TabNavigator {
     }
     if (this.elements.clearFiltersBtnInline) {
       this.elements.clearFiltersBtnInline.style.display = hasFilters ? 'block' : 'none';
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Selection
+  // ---------------------------------------------------------------------------
+
+  /** Select every tab currently on screen (respects search/filter and collapsed groups) */
+  selectAllVisible() {
+    const visible = this.tabManager.getVisibleTabs();
+    this.selectionManager.selectAll(visible);
+  }
+
+  /**
+   * Keep the selection limited to tabs the user can see.
+   * Called after every render and when a group is collapsed.
+   */
+  pruneSelectionToVisible() {
+    if (!this.selectionManager || this.selectionManager.getSelectionCount() === 0) return;
+    const dropped = this.selectionManager.retainOnly(this.tabManager.getVisibleTabs().map(t => t.id));
+    if (dropped > 0 && this.tabManager.getTabs().length > 0) {
+      this.updateSelectionInfo();
+    }
+  }
+
+  /**
+   * Selected tabs that are actually actionable right now: still open AND visible.
+   * Batch actions use only this list (never the raw selection set).
+   * @returns {chrome.tabs.Tab[]}
+   */
+  getActionableSelection() {
+    return this.tabManager.getVisibleTabs().filter(t => this.selectionManager.isSelected(t.id));
+  }
+
+  updateSelectionInfo() {
+    const infoLabel = this.elements.currentTabInfo?.querySelector('.info-label');
+    if (!this.selectionManager?.isInSelectionMode()) {
+      if (infoLabel) infoLabel.textContent = 'Current Tab';
+      const info = this.tabManager.getCurrentTabInfo();
+      if (this.elements.currentTabTitle) this.elements.currentTabTitle.textContent = info.title;
+      if (this.elements.currentTabUrl) this.elements.currentTabUrl.textContent = info.hostname;
+      return;
+    }
+
+    const count = this.selectionManager.getSelectionCount();
+    const visibleCount = this.tabManager.getVisibleTabs().length;
+    const filtered = this.tabManager.hasActiveFilters();
+    if (infoLabel) infoLabel.textContent = filtered ? 'Selection Mode · filtered' : 'Selection Mode';
+    if (this.elements.currentTabTitle) {
+      this.elements.currentTabTitle.textContent = count > 0
+        ? `${count} of ${visibleCount} tab${visibleCount === 1 ? '' : 's'} selected`
+        : 'Click tabs to select';
+    }
+    if (this.elements.currentTabUrl) {
+      this.elements.currentTabUrl.textContent = count > 0
+        ? 'Shift+click for range · Esc to exit'
+        : 'Ctrl/Cmd+A selects all shown';
+    }
+    if (this.elements.selectAllBtn) {
+      this.elements.selectAllBtn.title = filtered
+        ? `Select all ${visibleCount} filtered tabs`
+        : `Select all ${visibleCount} tabs`;
+    }
+  }
+
+  cancelCloseConfirmation() {
+    const btn = this.elements.batchCloseBtn;
+    if (!btn || !btn.classList.contains('confirming')) return;
+    clearTimeout(this._confirmTimer);
+    btn.classList.remove('confirming');
+    setIcon(btn, 'CLOSE_TABS');
+    btn.title = 'Close selected tabs';
+  }
+
+  /**
+   * Close the selected (visible) tabs.
+   * Pinned tabs are skipped. Closing many tabs, or every remaining tab in the
+   * window (which would close the window), needs a second click to confirm.
+   */
+  async batchCloseSelected() {
+    const btn = this.elements.batchCloseBtn;
+    const selected = this.getActionableSelection();
+    const toClose = selected.filter(t => !t.pinned);
+    const pinnedSkipped = selected.length - toClose.length;
+
+    if (toClose.length === 0) {
+      showMessage(pinnedSkipped ? 'Pinned tabs are not closed in bulk' : 'No tabs selected', 'error');
+      return;
+    }
+
+    const closesWindow = toClose.length >= this.tabManager.getTabs().length;
+    const needsConfirm = closesWindow || toClose.length >= 5;
+    if (needsConfirm && !btn.classList.contains('confirming')) {
+      btn.classList.add('confirming');
+      btn.textContent = closesWindow ? `Close all ${toClose.length} + window?` : `Close ${toClose.length}?`;
+      btn.title = 'Click again to confirm';
+      clearTimeout(this._confirmTimer);
+      this._confirmTimer = setTimeout(() => this.cancelCloseConfirmation(), 4000);
+      return;
+    }
+    this.cancelCloseConfirmation();
+
+    const ids = toClose.map(t => t.id);
+    ids.forEach(id => {
+      this._closingTabIds.add(id);
+      this.tabManager.findTabElement(id)?.classList.add('closing');
+    });
+
+    const { closed, failed } = await removeTabs(ids);
+
+    closed.forEach(id => {
+      this.tabManager.forgetTab(id);
+      this.selectionManager.deselectTab(id);
+    });
+    setTimeout(() => closed.forEach(id => this._closingTabIds.delete(id)), 1000);
+    failed.forEach(id => this._closingTabIds.delete(id));
+
+    let msg = `${closed.length} tab${closed.length === 1 ? '' : 's'} closed`;
+    if (pinnedSkipped) msg += ` (${pinnedSkipped} pinned skipped)`;
+    if (failed.length) msg += ` · ${failed.length} could not be closed`;
+    showMessage(msg, failed.length ? 'error' : 'success');
+
+    // Reconcile with the real tab list (also brings back any tab that failed)
+    await this.refreshTabList(false, true);
+  }
+
+  /** Read the current state of the selected tabs (the render-time snapshot may be stale) */
+  async _freshSelection() {
+    const tabs = await Promise.all(
+      this.getActionableSelection().map(t => chrome.tabs.get(t.id).catch(() => null))
+    );
+    return tabs.filter(Boolean);
+  }
+
+  async _runBatch(tabs, fn) {
+    const results = await Promise.allSettled(tabs.map(t => withTabEditRetry(() => fn(t))));
+    const failed = results.filter(r => r.status === 'rejected');
+    failed.forEach(r => console.error('Batch action failed:', r.reason));
+    return failed.length;
+  }
+
+  async batchMuteSelected() {
+    const tabs = await this._freshSelection();
+    if (tabs.length === 0) return showMessage('No tabs selected', 'error');
+    const allMuted = tabs.every(t => t.mutedInfo?.muted);
+    const failed = await this._runBatch(tabs, t => chrome.tabs.update(t.id, { muted: !allMuted }));
+    showMessage(`${tabs.length - failed} tab${tabs.length === 1 ? '' : 's'} ${allMuted ? 'unmuted' : 'muted'}` +
+      (failed ? ` · ${failed} failed` : ''), failed ? 'error' : 'success');
+  }
+
+  async batchPinSelected() {
+    const tabs = await this._freshSelection();
+    if (tabs.length === 0) return showMessage('No tabs selected', 'error');
+    const allPinned = tabs.every(t => t.pinned);
+    // Pin/unpin sequentially in tab order so the tabs keep their relative order
+    const ordered = [...tabs].sort((a, b) => allPinned ? b.index - a.index : a.index - b.index);
+    let failed = 0;
+    for (const t of ordered) {
+      try {
+        await withTabEditRetry(() => chrome.tabs.update(t.id, { pinned: !allPinned }));
+      } catch (err) {
+        failed++;
+        console.error('Pin failed:', err);
+      }
+    }
+    showMessage(`${tabs.length - failed} tab${tabs.length === 1 ? '' : 's'} ${allPinned ? 'unpinned' : 'pinned'}` +
+      (failed ? ` · ${failed} failed` : ''), failed ? 'error' : 'success');
+  }
+
+  async batchMoveToWindow() {
+    const tabs = (await this._freshSelection()).sort((a, b) => a.index - b.index);
+    const movable = tabs.filter(t => !t.pinned);
+    if (movable.length === 0) {
+      return showMessage(tabs.length ? 'Pinned tabs cannot be moved' : 'No tabs selected', 'error');
+    }
+    try {
+      const win = await withTabEditRetry(() => chrome.windows.create({ tabId: movable[0].id, type: 'normal' }));
+      if (movable.length > 1) {
+        await withTabEditRetry(() => chrome.tabs.move(movable.slice(1).map(t => t.id), { windowId: win.id, index: -1 }));
+      }
+      this.selectionManager.deselectAll();
+      showMessage(`${movable.length} tab${movable.length === 1 ? '' : 's'} moved to new window`, 'success');
+    } catch (err) {
+      console.error('Move to new window failed:', err);
+      showMessage('Could not move tabs to a new window', 'error');
+      this.refreshTabList(false, true);
     }
   }
 
