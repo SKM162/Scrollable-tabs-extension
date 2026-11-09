@@ -117,9 +117,11 @@ class TabNavigator {
     setIcon(this.elements.selectAllBtn, 'SELECT_ALL');
     setIcon(this.elements.deselectAllBtn, 'DESELECT_ALL');
     setIcon(this.elements.batchCloseBtn, 'CLOSE_TABS');
-    setIcon(this.elements.batchMuteBtn, 'MUTE_TABS');
-    setIcon(this.elements.batchPinBtn, 'PIN_TABS');
-    setIcon(this.elements.batchWindowBtn, 'NEW_WINDOW_TABS');
+    // Same icons as the per-tab dropdown menu; mute/pin switch to unmute/unpin
+    // in updateBatchActionIcons() when every selected tab is already muted/pinned
+    setIcon(this.elements.batchMuteBtn, 'MUTE');
+    setIcon(this.elements.batchPinBtn, 'PIN');
+    setIcon(this.elements.batchWindowBtn, 'OPEN_IN_NEW_WINDOW');
   }
 
   applyTheme(themeSetting) {
@@ -831,11 +833,30 @@ class TabNavigator {
         ? 'Shift+click for range · Esc to exit'
         : 'Ctrl/Cmd+A selects all shown';
     }
+    this.updateBatchActionIcons();
     if (this.elements.selectAllBtn) {
       this.elements.selectAllBtn.title = filtered
         ? `Select all ${visibleCount} filtered tabs`
         : `Select all ${visibleCount} tabs`;
     }
+  }
+
+  /** Show Mute/Unmute and Pin/Unpin like the tab menu does, based on the selection */
+  updateBatchActionIcons() {
+    const selected = this.getActionableSelection();
+    const allMuted = selected.length > 0 && selected.every(t => t.mutedInfo?.muted);
+    const allPinned = selected.length > 0 && selected.every(t => t.pinned);
+    const set = (btn, icon, title) => {
+      if (!btn) return;
+      if (btn.dataset.icon !== icon) {
+        setIcon(btn, icon);
+        btn.dataset.icon = icon;
+      }
+      btn.title = title;
+    };
+    set(this.elements.batchMuteBtn, allMuted ? 'UNMUTE' : 'MUTE', allMuted ? 'Unmute selected tabs' : 'Mute selected tabs');
+    set(this.elements.batchPinBtn, allPinned ? 'UNPIN' : 'PIN', allPinned ? 'Unpin selected tabs' : 'Pin selected tabs');
+    set(this.elements.batchWindowBtn, 'OPEN_IN_NEW_WINDOW', 'Move selected tabs to a new window');
   }
 
   cancelCloseConfirmation() {

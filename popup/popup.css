@@ -1269,7 +1269,8 @@ body {
 }
 
 .selection-action-btn svg path,
-.selection-action-btn svg line {
+.selection-action-btn svg line,
+.selection-action-btn svg rect {
   stroke: var(--text-primary);
 }
 
@@ -1322,4 +1323,23 @@ body {
 .bug-report-btn svg {
   width: 100%;
   height: 100%;
+}
+
+/* Batch action icons reuse the tab menu icons (filled pin/mute, stroked window) */
+.selection-action-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.selection-action-btn .pin-icon path,
+.selection-action-btn .unpin-icon path,
+.selection-action-btn .mute-icon path,
+.selection-action-btn .unmute-icon path {
+  fill: var(--text-primary) !important;
+  stroke: none !important;
+}
+
+.selection-action-btn .new-window-icon path {
+  fill: none !important;
+  stroke: var(--text-primary) !important;
 }
