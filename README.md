@@ -14,7 +14,13 @@ Made with AI and human touch <3.
 - **Click to switch** tabs
 - **Real-time synchronization** with browser tab changes
 - **Visual indicators** for pinned tabs and audio playing
-- **Filter tabs** by audio, pinned, grouped, or ungrouped status with text search
+- **Search as you type**: start typing anywhere in the popup; Enter opens the first match
+- **Filter tabs** by audio (playing or muted), pinned, grouped, or ungrouped status
+- **Multi-select** (Ctrl/Cmd+click, Shift+click for ranges) with batch close, mute, pin and move to a new window
+- **Middle-click** a tab to close it; collapsed groups stay collapsed while the popup is open
+- **Bug report / feedback form** that opens a pre-filled GitHub issue (no data is sent until you submit it there)
+
+Keyboard shortcuts are listed on the settings page.
 
 ![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/assets/Scrollable%20tab%20peek.png)
 

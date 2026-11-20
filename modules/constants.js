@@ -1,21 +1,22 @@
 /** @fileoverview Centralized constants for the Scrollable Tabs extension */
 
 /** Default settings for the extension */
+/** Default settings for the extension (shared by the popup, settings and feedback pages) */
 export const DEFAULT_SETTINGS = {
   popupWidth: 800,
   showTitles: true,
   showIndices: true,
   autoCenter: true,
   keyboardNav: true,
-  scrollSpeed: 5.0,
-  visibleTabs: 7,
-  animationSpeed: 200,
-  colorTheme: 'auto',
-  faviconSize: 'medium',
-  highlightStyle: 'border',
-  showCenterInfo: true,
+  // Must match the settings slider range (0.5 - 3). This used to default to 5.0
+  // here but 1.0 on the settings page, so anyone who never opened the settings
+  // page scrolled 5x faster than the "1.0x" the settings page showed.
+  scrollSpeed: 1.0,
   theme: 'auto'
 };
+
+/** Scroll speed bounds (keep in sync with the settings slider) */
+export const SCROLL_SPEED = { MIN: 0.5, MAX: 3 };
 
 /** Theme modes */
 export const THEMES = {
@@ -34,7 +35,11 @@ export const POPUP_DIMENSIONS = {
 /** Scroll configuration */
 export const SCROLL_CONFIG = {
   PRIORITY_MS: 150,
-  BEHAVIOR: 'auto'
+  BEHAVIOR: 'auto',
+  // A vertical mouse wheel notch (~100px) is amplified so one notch moves a few
+  // tabs; horizontal trackpad gestures are already fine-grained and are not.
+  WHEEL_MULTIPLIER: 4,
+  LINE_HEIGHT_PX: 16
 };
 
 /** Chrome tab group color mappings */
@@ -145,7 +150,9 @@ export const KEYS = {
   HOME: 'Home',
   END: 'End',
   ENTER: 'Enter',
-  ESCAPE: 'Escape'
+  ESCAPE: 'Escape',
+  DELETE: 'Delete',
+  BACKSPACE: 'Backspace'
 };
 
 export const ICONS = {
@@ -174,5 +181,7 @@ export const ICONS = {
   NEW_WINDOW_TABS: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="14" rx="2" stroke="#363636" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="#363636" stroke-width="2" stroke-linecap="round"/></svg>',
   SELECT_ALL: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#363636" stroke-width="2"/><path d="M9 12l2 2 4-4" stroke="#363636" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   DESELECT_ALL: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#363636" stroke-width="2"/><path d="M15 9l-6 6M9 9l6 6" stroke="#363636" stroke-width="2" stroke-linecap="round"/></svg>',
-  BUG: '<svg class="bug-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M19 7l-3 2M5 7l3 2M19 13h-3M5 13h3M19 19l-3-2M5 19l3-2M10 4l1 2M14 4l-1 2"/></svg>'
+  BUG: '<svg class="bug-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M19 7l-3 2M5 7l3 2M19 13h-3M5 13h3M19 19l-3-2M5 19l3-2M10 4l1 2M14 4l-1 2"/></svg>',
+  SEARCH: '<svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  CLEAR_SEARCH: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
 }

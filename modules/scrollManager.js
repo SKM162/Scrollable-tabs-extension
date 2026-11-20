@@ -1,6 +1,12 @@
 /** @fileoverview Scroll management utilities */
 
-import { SCROLL_CONFIG, CLASSES } from './constants.js';
+import { SCROLL_CONFIG, SCROLL_SPEED, CLASSES } from './constants.js';
+
+const clampSpeed = (speed) => {
+  const n = Number(speed);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(SCROLL_SPEED.MAX, Math.max(SCROLL_SPEED.MIN, n));
+};
 
 /**
  * Scroll manager class
@@ -8,7 +14,7 @@ import { SCROLL_CONFIG, CLASSES } from './constants.js';
 export class ScrollManager {
   constructor(tabContainer, options = {}) {
     this.tabContainer = tabContainer;
-    this.scrollSpeed = options.scrollSpeed || 5.0;
+    this.scrollSpeed = clampSpeed(options.scrollSpeed);
     this.onScrollStart = options.onScrollStart || (() => {});
     this.onScrollEnd = options.onScrollEnd || (() => {});
 
@@ -144,6 +150,23 @@ export class ScrollManager {
   }
 
   /**
+   * Scroll just enough to bring a tab fully into view (used for keyboard
+   * navigation, where re-centering on every key press would feel jumpy).
+   * @param {HTMLElement} tabElement
+   */
+  ensureVisible(tabElement) {
+    if (!tabElement) return;
+    const margin = 24;
+    const c = this.tabContainer.getBoundingClientRect();
+    const r = tabElement.getBoundingClientRect();
+    if (r.width === 0) return; // hidden (collapsed section)
+    let dx = 0;
+    if (r.left < c.left + margin) dx = r.left - c.left - margin;
+    else if (r.right > c.right - margin) dx = r.right - c.right + margin;
+    if (dx) this.tabContainer.scrollBy({ left: dx, behavior: SCROLL_CONFIG.BEHAVIOR });
+  }
+
+  /**
    * Set scrolling priority (suppress hover updates during scroll)
    */
   setScrollingPriority() {
@@ -174,7 +197,7 @@ export class ScrollManager {
    * @param {number} speed - New scroll speed
    */
   updateScrollSpeed(speed) {
-    this.scrollSpeed = speed;
+    this.scrollSpeed = clampSpeed(speed);
   }
 
   _handleScroll() {
@@ -198,11 +221,17 @@ export class ScrollManager {
     e.preventDefault();
     this.setScrollingPriority();
     
-    // Get scroll delta (prefer X for trackpads, fall back to Y)
-    const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
-    
+    // Horizontal trackpad gestures are already pixel-precise; a vertical wheel
+    // is turned into horizontal movement and amplified so a notch moves a few
+    // tabs. (Previously both were multiplied by speed * 5, and with the old 5.0
+    // default speed one wheel notch flew ~2500px across the strip.)
+    const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    let delta = horizontal ? e.deltaX : e.deltaY * SCROLL_CONFIG.WHEEL_MULTIPLIER;
+    if (e.deltaMode === 1) delta *= SCROLL_CONFIG.LINE_HEIGHT_PX;           // lines
+    else if (e.deltaMode === 2) delta *= this.tabContainer.clientWidth;     // pages
+
     // Accumulate delta for smooth batching
-    this._pendingDelta = (this._pendingDelta || 0) + delta;
+    this._pendingDelta = (this._pendingDelta || 0) + delta * this.scrollSpeed;
     
     // Schedule scroll update
     if (!this._scrollPending) {
@@ -210,7 +239,7 @@ export class ScrollManager {
       requestAnimationFrame(() => {
         this._scrollPending = false;
         if (this._pendingDelta) {
-          this.tabContainer.scrollLeft += this._pendingDelta * this.scrollSpeed * 5;
+          this.tabContainer.scrollLeft += this._pendingDelta;
           this._pendingDelta = 0;
         }
       });

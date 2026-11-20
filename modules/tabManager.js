@@ -18,6 +18,31 @@ function iconNode(name) {
 /** chrome.tabGroups.TAB_GROUP_ID_NONE (-1), without depending on the API being present */
 const NO_GROUP = chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
 
+/** Collapse button glyphs: the strip is horizontal, so sections fold to the left */
+const GLYPH_EXPANDED = '◀';
+const GLYPH_COLLAPSED = '▶';
+/** chrome.storage.session key for collapsed tab groups (survives popup re-opens, not restarts) */
+const COLLAPSED_KEY = 'collapsedSections';
+
+/**
+ * Collapse or expand a section element and keep its button glyph in sync.
+ * (Several code paths used to set different glyphs: '▼' for expanded in some,
+ * '◀' in others.)
+ * @param {HTMLElement} section
+ * @param {boolean} collapsed
+ */
+export function setSectionCollapsed(section, collapsed) {
+  if (!section) return;
+  section.classList.toggle(CLASSES.COLLAPSED, collapsed);
+  const btn = section.querySelector('.collapse-btn');
+  if (btn) {
+    btn.textContent = collapsed ? GLYPH_COLLAPSED : GLYPH_EXPANDED;
+    btn.setAttribute('aria-expanded', String(!collapsed));
+  }
+  const header = section.querySelector(`.${CLASSES.GROUP_HEADER}`);
+  if (header) header.title = collapsed ? 'Expand' : 'Collapse';
+}
+
 /**
  * Tab manager class
  */
@@ -32,7 +57,16 @@ export class TabManager {
     this.onDropdownAction = options.onDropdownAction || (() => {});
     this.isSelected = options.isSelected || (() => false);
     this.onSectionToggle = options.onSectionToggle || (() => {});
+    this.onTabMiddleClick = options.onTabMiddleClick || (() => {});
+    this.onClearFilters = options.onClearFilters || (() => {});
     this.isFirstRender = true;
+    // Keys of collapsed sections. Rendering rebuilds the DOM on every tab update
+    // (title/favicon/audio changes), which used to silently re-expand every
+    // group the user had collapsed.
+    this.collapsedSections = new Set();
+    // Tab ids in the last render, so only newly appearing tabs animate in
+    // (previously the whole strip re-played its fade-in on every update)
+    this._renderedIds = new Set();
     this._groupInfoCache = new Map();
     this.filters = {
       searchText: '',
@@ -57,6 +91,35 @@ export class TabManager {
       console.error('Error fetching tabs:', error);
       return this.tabs || [];
     }
+  }
+
+  /** Restore collapsed groups from this browser session */
+  async loadCollapsedState() {
+    try {
+      const { [COLLAPSED_KEY]: keys = [] } = await chrome.storage.session.get(COLLAPSED_KEY);
+      this.collapsedSections = new Set(keys);
+    } catch { /* storage.session unavailable: keep in memory only */ }
+  }
+
+  _saveCollapsedState() {
+    // Only real tab groups have stable ids worth remembering
+    const keys = [...this.collapsedSections].filter(k => k.startsWith('g-'));
+    chrome.storage.session?.set({ [COLLAPSED_KEY]: keys }).catch(() => {});
+  }
+
+  /**
+   * Make sure a tab's section is expanded (e.g. before scrolling to it)
+   * @param {number} tabId
+   * @returns {HTMLElement|null} the tab element
+   */
+  revealTab(tabId) {
+    const el = this.findTabElement(tabId);
+    const section = el?.closest(`.${CLASSES.COLLAPSIBLE_SECTION}`);
+    if (section?.classList.contains(CLASSES.COLLAPSED)) {
+      setSectionCollapsed(section, false);
+      if (this.collapsedSections.delete(section.dataset.sectionKey)) this._saveCollapsedState();
+    }
+    return el;
   }
 
   /**
@@ -206,6 +269,7 @@ export class TabManager {
     await this._renderUnpinnedTabs(unpinnedTabs, sortedGroups);
 
     this.container.replaceChildren(target);
+    this._renderedIds = new Set(tabsToRender.map(t => t.id));
   }
 
   _renderNoResults() {
@@ -322,8 +386,18 @@ export class TabManager {
       }
     });
 
+    const clearBtn = createElement('button', {
+      className: 'no-results-clear',
+      textContent: 'Clear filters'
+    });
+    clearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onClearFilters();
+    });
+
     iconWrapper.appendChild(filterIcon);
     iconWrapper.appendChild(noResultsText);
+    iconWrapper.appendChild(clearBtn);
 
     container.appendChild(ghostRow);
     container.appendChild(iconWrapper);
@@ -359,12 +433,7 @@ export class TabManager {
     activeTabElement.classList.add(CLASSES.ACTIVE_TAB);
 
     // Expand collapsed section if needed
-    const groupSection = activeTabElement.closest(`.${CLASSES.COLLAPSIBLE_SECTION}`);
-    if (groupSection?.classList.contains(CLASSES.COLLAPSED)) {
-      groupSection.classList.remove(CLASSES.COLLAPSED);
-      const btn = groupSection.querySelector('.collapse-btn');
-      if (btn) btn.textContent = '▼';
-    }
+    this.revealTab(activeTab.id);
   }
 
   _categorizeTabs(tabs = this.tabs) {
@@ -442,7 +511,7 @@ export class TabManager {
       ungroupedTabs.length = 0; // Clear the array
     }
     if (groupTabs.length > 0) {
-      const section = await this._createGroupSection(groupId, groupTabs, `Group ${groupId}`, false);
+      const section = await this._createGroupSection(groupId, groupTabs, 'Unnamed group', false);
       this._renderTarget.appendChild(section);
       groupTabs.length = 0; // Clear the array
     }
@@ -485,6 +554,14 @@ export class TabManager {
     const header = this._createSectionHeader(groupTitle, groupTabs.length, isPinned, section);
     section.appendChild(header);
 
+    if (!isPinned) {
+      const key = groupId === 'ungrouped' ? `u-${groupTabs[0]?.id}` : `g-${groupId}`;
+      section.dataset.sectionKey = key;
+      // While searching/filtering, show every match instead of hiding some of
+      // them inside a collapsed group
+      setSectionCollapsed(section, !this.hasActiveFilters() && this.collapsedSections.has(key));
+    }
+
     // Create tabs container
     const tabsContainer = createElement('div', { className: CLASSES.GROUP_TABS_CONTAINER });
     groupTabs.forEach((tab, index) => {
@@ -520,7 +597,8 @@ export class TabManager {
     const countSpan = createElement('span', { className: 'group-count', textContent: count.toString() });
     const collapseBtn = createElement('button', {
       className: 'collapse-btn',
-      textContent: '◀'
+      textContent: GLYPH_EXPANDED,
+      attributes: { 'aria-label': 'Toggle group', 'aria-expanded': 'true' }
     });
 
     header.appendChild(label);
@@ -528,9 +606,14 @@ export class TabManager {
     header.appendChild(collapseBtn);
 
     header.addEventListener('click', () => {
-      section.classList.toggle(CLASSES.COLLAPSED);
-      const btn = header.querySelector('.collapse-btn');
-      btn.textContent = section.classList.contains(CLASSES.COLLAPSED) ? '▼' : '◀';
+      const collapsed = !section.classList.contains(CLASSES.COLLAPSED);
+      setSectionCollapsed(section, collapsed);
+      // Remember it (but not for temporary toggles while a filter is active)
+      if (!this.hasActiveFilters() && section.dataset.sectionKey) {
+        if (collapsed) this.collapsedSections.add(section.dataset.sectionKey);
+        else this.collapsedSections.delete(section.dataset.sectionKey);
+        this._saveCollapsedState();
+      }
       this.onSectionToggle(section);
     });
 
@@ -545,6 +628,12 @@ export class TabManager {
 
     if (tab.active) {
       div.classList.add(CLASSES.ACTIVE_TAB);
+    }
+    if (!this.isFirstRender && !this._renderedIds.has(tab.id)) {
+      div.classList.add('tab-enter');
+    }
+    if (tab.discarded) {
+      div.classList.add('discarded');
     }
     // Selection state is applied while building, so re-renders (tab updates,
     // filtering, scrolling-triggered refreshes) never drop the selection.
@@ -595,6 +684,18 @@ export class TabManager {
 
     div.addEventListener('click', (e) => {
       this.onTabClick(tab.id, e);
+    });
+
+    // Middle-click closes the tab, like in Chrome's own tab strip. (mousedown is
+    // prevented so Chrome doesn't start autoscroll mode.)
+    div.addEventListener('mousedown', (e) => {
+      if (e.button === 1) e.preventDefault();
+    });
+    div.addEventListener('auxclick', (e) => {
+      if (e.button !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.onTabMiddleClick(tab);
     });
 
     return div;
@@ -655,23 +756,18 @@ export class TabManager {
   }
 
   _addIndicators(div, tab) {
-    if (tab.pinned) {
-      const pin = createElement('span', {
-        className: `${CLASSES.INDICATOR} ${CLASSES.PIN_INDICATOR}`,
-        attributes: { title: 'Pinned' }
-      });
-      pin.appendChild(iconNode('PIN'));
-      div.appendChild(pin);
-    }
-
-    if (tab.audible) {
-      const audio = createElement('span', {
-        className: `${CLASSES.INDICATOR} ${CLASSES.AUDIO_INDICATOR}`,
-        attributes: { title: 'Audio playing' }
-      });
-      audio.appendChild(iconNode('UNMUTE'));
-      div.appendChild(audio);
-    }
+    // One badge in the corner. Pinned tabs always live in the "Pinned" section,
+    // so the old pin badge was redundant - and it sat on exactly the same spot
+    // as the audio badge, so a pinned tab playing audio showed an overlapped mess.
+    // Muted tabs had no indicator at all, although the Audio filter lists them.
+    const muted = !!tab.mutedInfo?.muted;
+    if (!muted && !tab.audible) return;
+    const badge = createElement('span', {
+      className: `${CLASSES.INDICATOR} ${muted ? 'muted-indicator' : CLASSES.AUDIO_INDICATOR}`,
+      attributes: { title: muted ? 'Muted' : 'Playing audio' }
+    });
+    badge.appendChild(iconNode(muted ? 'MUTE' : 'UNMUTE'));
+    div.appendChild(badge);
   }
 
   _addDropdown(div, tab) {

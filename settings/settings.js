@@ -2,18 +2,11 @@
 
 import { loadSettings, saveSettings } from '../utils/storage.js';
 import { installErrorLog } from '../utils/errorLog.js';
+import { DEFAULT_SETTINGS, SCROLL_SPEED } from '../modules/constants.js';
 
 installErrorLog('settings');
 
-const DEFAULT_SETTINGS = {
-  popupWidth: 800,
-  showTitles: true,
-  showIndices: true,
-  autoCenter: true,
-  keyboardNav: true,
-  scrollSpeed: 1.0,
-  theme: 'auto'
-};
+const formatSpeed = (v) => `${parseFloat(v).toFixed(1)}x`;
 
 let saveTimeout = null;
 
@@ -78,13 +71,14 @@ class SettingsManager {
   populateForm() {
     this.elements.theme.value = this.currentSettings.theme || 'auto';
     this.elements.popupWidth.value = this.currentSettings.popupWidth;
-    this.elements.popupWidthValue.textContent = this.currentSettings.popupWidth;
+    this.elements.popupWidthValue.textContent = `${this.currentSettings.popupWidth}px`;
     this.elements.showTitles.checked = this.currentSettings.showTitles;
     this.elements.showIndices.checked = this.currentSettings.showIndices;
     this.elements.autoCenter.checked = this.currentSettings.autoCenter;
     this.elements.keyboardNav.checked = this.currentSettings.keyboardNav;
-    this.elements.scrollSpeed.value = this.currentSettings.scrollSpeed;
-    this.elements.scrollSpeedValue.textContent = parseFloat(this.currentSettings.scrollSpeed).toFixed(1);
+    const speed = Math.min(SCROLL_SPEED.MAX, Math.max(SCROLL_SPEED.MIN, Number(this.currentSettings.scrollSpeed) || 1));
+    this.elements.scrollSpeed.value = speed;
+    this.elements.scrollSpeedValue.textContent = formatSpeed(speed);
   }
 
   setupAutoSave() {
@@ -110,11 +104,11 @@ class SettingsManager {
 
   setupSliderUpdates() {
     this.elements.popupWidth.addEventListener('input', (e) => {
-      this.elements.popupWidthValue.textContent = e.target.value;
+      this.elements.popupWidthValue.textContent = `${e.target.value}px`;
     });
 
     this.elements.scrollSpeed.addEventListener('input', (e) => {
-      this.elements.scrollSpeedValue.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+      this.elements.scrollSpeedValue.textContent = formatSpeed(e.target.value);
     });
   }
 

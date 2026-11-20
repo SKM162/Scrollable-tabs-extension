@@ -17,6 +17,7 @@ import {
   saveScrollAnchor,
   restoreScrollAnchor,
   handleDropdownAction,
+  DROPDOWN_ACTIONS,
   withTabEditRetry,
   removeTabs,
   showMessage,
@@ -54,6 +55,7 @@ class TabNavigator {
     this.setupManagers();
     this.setupEventListeners();
 
+    await this.tabManager.loadCollapsedState();
     const initialTabs = await tabsPromise;
     if (initialTabs) this.tabManager.tabs = initialTabs;
     await this.refreshTabList(false, false, { skipFetch: !!initialTabs });
@@ -82,6 +84,8 @@ class TabNavigator {
       clearFiltersBtnInline: $(SELECTORS.CLEAR_FILTERS_BTN_INLINE),
       selectionModeBtn: $(SELECTORS.SELECTION_MODE_BTN),
       bugReportBtn: $(SELECTORS.BUG_REPORT_BTN),
+      searchIcon: $('#searchIcon'),
+      selectionCount: $('#selectionCount'),
       selectionBar: $('#selectionBar'),
       selectAllBtn: $('#selectAllBtn'),
       deselectAllBtn: $('#deselectAllBtn'),
@@ -99,18 +103,36 @@ class TabNavigator {
   setupTheme() {
     const themeSetting = this.settings.theme || THEMES.AUTO;
     this.applyTheme(themeSetting);
+
+    // In "auto", follow the OS switching between light and dark while open
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemThemeChange = () => {
+      if ((this.settings.theme || THEMES.AUTO) !== THEMES.AUTO) return;
+      this.applyTheme(THEMES.AUTO);
+      this.updateThemeButton();
+    };
+    media.addEventListener('change', onSystemThemeChange);
+    this.cleanupFns.push(() => media.removeEventListener('change', onSystemThemeChange));
     
     this.elements.themeToggleBtn?.addEventListener('click', () => {
       this.toggleTheme();
     });
   }
 
+  updateThemeButton() {
+    const dark = document.documentElement.getAttribute('data-theme') === THEMES.DARK;
+    setIcon(this.elements.themeToggleBtn, dark ? 'DARK_MODE' : 'LIGHT_MODE');
+    if (this.elements.themeToggleBtn) {
+      this.elements.themeToggleBtn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    }
+  }
+
   setupIcons() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-    setIcon(this.elements.themeToggleBtn, currentTheme === 'dark' ? 'DARK_MODE' : 'LIGHT_MODE');
+    this.updateThemeButton();
     setIcon(this.elements.settingsBtn, 'SETTINGS');
     setIcon(this.elements.filterBtn, 'FILTER');
-    setIcon(this.elements.clearFiltersBtnInline, 'CLEAR_FILTER');
+    setIcon(this.elements.clearFiltersBtnInline, 'CLEAR_SEARCH');
+    setIcon(this.elements.searchIcon, 'SEARCH');
     setIcon(this.elements.tabCounterWrapper?.querySelector('.tab-counter-icon'), 'TAB_COUNTER');
     setIcon(this.elements.selectionModeBtn, 'SELECT');
     setIcon(this.elements.bugReportBtn, 'BUG');
@@ -141,8 +163,7 @@ class TabNavigator {
     const newTheme = currentTheme === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK;
     
     document.documentElement.setAttribute('data-theme', newTheme);
-    setIcon(this.elements.themeToggleBtn, newTheme === THEMES.DARK ? 'DARK_MODE' : 'LIGHT_MODE');
-    this.elements.themeToggleBtn.title = newTheme === THEMES.DARK ? 'Switch to light mode' : 'Switch to dark mode';
+    this.updateThemeButton();
     
     this.settings.theme = newTheme;
     // Persist the choice (previously it was only kept in memory and lost on close)
@@ -181,6 +202,7 @@ class TabNavigator {
       onSelectionModeChange: (isActive) => {
         this.elements.popupContainer.classList.toggle(CLASSES.SELECTION_MODE, isActive);
         this.elements.selectionModeBtn?.classList.toggle(CLASSES.ACTIVE, isActive);
+        this.elements.selectionModeBtn?.setAttribute('aria-pressed', String(isActive));
         if (this.elements.selectionModeBtn) {
           this.elements.selectionModeBtn.title = isActive ? 'Exit selection mode (Esc)' : 'Select multiple tabs';
         }
@@ -195,6 +217,11 @@ class TabNavigator {
       settings: this.settings,
       isSelected: (tabId) => this.selectionManager.isSelected(tabId),
       onSectionToggle: () => this.pruneSelectionToVisible(),
+      onTabMiddleClick: (tab) => {
+        this.dropdownManager.closeAll();
+        this.closeTab(tab);
+      },
+      onClearFilters: () => this.clearAllFilters(),
       onTabClick: async (tabId, event) => {
         if (this.selectionManager.isInSelectionMode() ||
             event?.ctrlKey || event?.metaKey || event?.shiftKey) {
@@ -218,7 +245,10 @@ class TabNavigator {
           this.closeTab(tab);
         } else {
           this.dropdownManager.closeAll();
-          handleDropdownAction(action, tab);
+          handleDropdownAction(action, tab).then(ok => {
+            if (!ok) showMessage('That action could not be completed', 'error');
+            else if (action === DROPDOWN_ACTIONS.COPY_URL) showMessage('URL copied', 'success');
+          });
         }
       }
     });
@@ -245,28 +275,63 @@ class TabNavigator {
     });
     this.dropdownManager.setup();
 
-    // Keyboard navigation
-    if (this.settings.keyboardNav) {
-      this.keyboardHandler = createKeyboardNavigator({
-        getTabs: () => this.tabManager.getTabs(),
-        onTabChange: (tabId) => withTabEditRetry(() => chrome.tabs.update(tabId, { active: true }))
-          .catch(err => console.error('Failed to activate tab:', err)),
-        onClose: () => window.close(),
-        onSelectAll: () => this.selectAllVisible(),
-        onEscape: () => {
-          if (this.dropdownManager.isOpen()) {
-            this.dropdownManager.closeAll();
-            return true;
-          }
-          if (this.selectionManager.isInSelectionMode()) {
-            this.selectionManager.exitSelectionMode();
-            return true;
-          }
-          return false;
+    // Keyboard. Always installed: only arrow/Home/End/Enter tab switching
+    // depends on the "Keyboard Navigation" setting.
+    this.keyboardHandler = createKeyboardNavigator({
+      navEnabled: !!this.settings.keyboardNav,
+      getTabs: () => this.tabManager.getVisibleTabs(),
+      onTabChange: (tabId) => {
+        this._revealActiveOnSync = true;
+        return withTabEditRetry(() => chrome.tabs.update(tabId, { active: true }))
+          .catch(err => console.error('Failed to activate tab:', err));
+      },
+      onClose: () => window.close(),
+      onSelectAll: () => this.selectAllVisible(),
+      onDelete: () => {
+        if (!this.selectionManager.isInSelectionMode() ||
+            this.selectionManager.getSelectionCount() === 0) return false;
+        this.batchCloseSelected();
+        return true;
+      },
+      onTypeToSearch: (char) => {
+        const input = this.elements.searchInput;
+        if (!input) return;
+        input.focus();
+        input.value += char;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+      // Escape peels back one layer at a time; only with nothing left to undo
+      // does it fall through (and Chrome closes the popup).
+      onEscape: () => {
+        if (this.dropdownManager.isOpen()) {
+          this.dropdownManager.closeAll();
+          return true;
         }
-      });
-      this.cleanupFns.push(enableKeyboardNavigation(this.keyboardHandler));
-    }
+        if (this.elements.filterMenu?.classList.contains('visible')) {
+          this.closeFilterMenu();
+          return true;
+        }
+        if (this.tabManager.hasActiveFilters()) {
+          this.clearAllFilters();
+          return true;
+        }
+        if (document.activeElement === this.elements.searchInput) {
+          this.elements.searchInput.blur();
+          return true;
+        }
+        if (this.selectionManager.isInSelectionMode()) {
+          this.selectionManager.exitSelectionMode();
+          return true;
+        }
+        return false;
+      }
+    });
+    this.cleanupFns.push(enableKeyboardNavigation(this.keyboardHandler));
+  }
+
+  closeFilterMenu() {
+    this.elements.filterMenu?.classList.remove('visible');
+    this.elements.filterBtn?.setAttribute('aria-expanded', 'false');
   }
 
   setupEventListeners() {
@@ -290,7 +355,19 @@ class TabNavigator {
 
     // Bug report / feedback form (opens in a tab; the popup is too small for a form)
     this.elements.bugReportBtn?.addEventListener('click', async () => {
-      await chrome.tabs.create({ url: chrome.runtime.getURL('feedback/feedback.html') });
+      const url = chrome.runtime.getURL('feedback/feedback.html');
+      try {
+        // Re-use an open feedback tab (and its draft) instead of opening another
+        const [existing] = await chrome.tabs.query({ url: `${url}*` });
+        if (existing) {
+          await chrome.tabs.update(existing.id, { active: true });
+          await chrome.windows.update(existing.windowId, { focused: true });
+        } else {
+          await chrome.tabs.create({ url });
+        }
+      } catch (err) {
+        console.error('Could not open the feedback page:', err);
+      }
       window.close();
     });
 
@@ -303,33 +380,32 @@ class TabNavigator {
     this.elements.filterBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       const menu = this.elements.filterMenu;
-      if (menu) {
-        menu.classList.toggle('visible');
-        if (menu.classList.contains('visible')) {
-          const containerRect = this.elements.popupContainer.getBoundingClientRect();
-          menu.style.left = '0';
-          menu.style.right = 'auto';
-          const menuRect = menu.getBoundingClientRect();
-          if (menuRect.right > containerRect.width) {
-            menu.style.left = 'auto';
-            menu.style.right = '0';
-          }
-        }
-      }
+      if (!menu) return;
+      const open = menu.classList.toggle('visible');
+      this.elements.filterBtn.setAttribute('aria-expanded', String(open));
+      if (open) this.dropdownManager.closeAll();
     });
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
       if (this.elements.filterDropdown && !this.elements.filterDropdown.contains(e.target)) {
-        this.elements.filterMenu?.classList.remove('visible');
+        this.closeFilterMenu();
       }
     });
 
     // Search input
     this.elements.searchInput?.addEventListener('input', (e) => {
-      this.tabManager.setFilter('searchText', e.target.value);
+      this.tabManager.setFilter('searchText', e.target.value.trim());
       this.updateFilterResults();
+      this._scrollToStartAfterRender = true;
       this.refreshTabList(false, false);
+    });
+    // Enter in the search box switches to the first match
+    this.elements.searchInput?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      const [first] = this.tabManager.getVisibleTabs();
+      if (first) this.tabManager.onTabClick(first.id, e);
     });
 
     // Filter radio buttons (only one active at a time, can click to deselect)
@@ -349,6 +425,7 @@ class TabNavigator {
         }
         
         this.updateFilterResults();
+        this._scrollToStartAfterRender = true;
         this.refreshTabList(false, false);
       });
     });
@@ -523,6 +600,11 @@ class TabNavigator {
       return this.refreshTabList();
     }
     this.tabManager.highlightActiveTab();
+    if (this._revealActiveOnSync) {
+      // Keyboard navigation: keep the newly active tab on screen
+      this._revealActiveOnSync = false;
+      this.scrollManager.ensureVisible(activeTab && this.tabManager.findTabElement(activeTab.id));
+    }
     this.updateCurrentTabInfo();
     this.updateTabCounter();
   }
@@ -623,6 +705,9 @@ class TabNavigator {
       } else if (forceCenter) {
         // Force center on active tab (e.g., after explicit user actions)
         this.centerOnActiveTabWithRetry(5, 50);
+      } else if (this._scrollToStartAfterRender) {
+        // The result set changed: show the first matches, not an old offset
+        this.elements.tabContainer.scrollLeft = 0;
       } else {
         // Restore the previous scroll position synchronously, in the same task
         // as the DOM swap, so the user never sees (or clicks) an un-scrolled strip
@@ -631,6 +716,7 @@ class TabNavigator {
     } catch (error) {
       console.error('Error in refreshTabList:', error);
     } finally {
+      this._scrollToStartAfterRender = false;
       this._isRendering = false;
       if (this._renderQueued) {
         this._renderQueued = false;
@@ -652,22 +738,9 @@ class TabNavigator {
       const activeTab = this.tabManager.getActiveTab();
       
       if (activeTab) {
-        // First try to find the tab element directly
-        let element = this.tabManager.findTabElement(activeTab.id);
-        
-        // If not found, the tab might be in a collapsed group
-        if (!element) {
-          // Try to expand all groups and search again
-          const collapsedGroups = this.elements.tabContainer.querySelectorAll('.collapsed');
-          collapsedGroups.forEach(group => {
-            group.classList.remove('collapsed');
-            const btn = group.querySelector('.collapse-btn');
-            if (btn) btn.textContent = '▼';
-          });
-          
-          // Try finding again after expanding
-          element = this.tabManager.findTabElement(activeTab.id);
-        }
+        // Expands the active tab's group if it's collapsed (a tab inside a
+        // display:none section has no size, so centering on it scrolled to 0)
+        const element = this.tabManager.revealTab(activeTab.id);
         
         if (element) {
           // Use requestAnimationFrame for smoother scrolling
@@ -692,16 +765,9 @@ class TabNavigator {
     const activeTab = this.tabManager.getActiveTab();
     if (!activeTab) return;
 
-    const tabElement = this.tabManager.findTabElement(activeTab.id);
+    // Expands its section if collapsed
+    const tabElement = this.tabManager.revealTab(activeTab.id);
     if (!tabElement) return;
-
-    // Expand section if collapsed
-    const groupSection = tabElement.closest(`.${CLASSES.COLLAPSIBLE_SECTION}`);
-    if (groupSection?.classList.contains(CLASSES.COLLAPSED)) {
-      groupSection.classList.remove(CLASSES.COLLAPSED);
-      const btn = groupSection.querySelector('.collapse-btn');
-      if (btn) btn.textContent = '▼';
-    }
 
     setTimeout(() => {
       this.scrollManager.centerTab(tabElement);
@@ -749,10 +815,14 @@ class TabNavigator {
 
     if (this.tabManager.hasActiveFilters()) {
       const stats = this.tabManager.getFilterStats();
-      this.elements.filterResults.textContent = `${stats.filtered} of ${stats.total}`;
+      this.elements.filterResults.textContent = `${stats.filtered}/${stats.total}`;
+      this.elements.filterResults.title = `${stats.filtered} of ${stats.total} tabs match`;
     } else {
       this.elements.filterResults.textContent = '';
+      this.elements.filterResults.title = '';
     }
+    // Make an active toggle filter visible without opening the menu
+    this.elements.filterBtn?.classList.toggle('has-filter', !!this.tabManager.filters.radio);
     this.updateClearFiltersButton();
   }
 
@@ -765,17 +835,14 @@ class TabNavigator {
       radio.checked = false;
     });
     this.updateFilterResults();
-    this.refreshTabList(false, false);
+    // Back to the normal view: put the active tab in the middle again
+    this.refreshTabList(true, false);
   }
 
   updateClearFiltersButton() {
-    const hasFilters = this.tabManager.hasActiveFilters();
-    if (this.elements.clearFiltersBtn) {
-      this.elements.clearFiltersBtn.style.display = hasFilters ? 'block' : 'none';
-    }
-    if (this.elements.clearFiltersBtnInline) {
-      this.elements.clearFiltersBtnInline.style.display = hasFilters ? 'block' : 'none';
-    }
+    const hasFilters = !!this.tabManager.hasActiveFilters();
+    this.elements.clearFiltersBtn?.classList.toggle('visible', hasFilters);
+    this.elements.clearFiltersBtnInline?.classList.toggle('visible', hasFilters);
   }
 
   // ---------------------------------------------------------------------------
@@ -821,6 +888,11 @@ class TabNavigator {
 
     const count = this.selectionManager.getSelectionCount();
     const visibleCount = this.tabManager.getVisibleTabs().length;
+    if (this.elements.selectionCount) {
+      this.elements.selectionCount.textContent = String(count);
+      this.elements.selectionCount.title = `${count} selected`;
+    }
+    this.elements.selectionBar?.classList.toggle('empty', count === 0);
     const filtered = this.tabManager.hasActiveFilters();
     if (infoLabel) infoLabel.textContent = filtered ? 'Selection Mode · filtered' : 'Selection Mode';
     if (this.elements.currentTabTitle) {
@@ -830,8 +902,8 @@ class TabNavigator {
     }
     if (this.elements.currentTabUrl) {
       this.elements.currentTabUrl.textContent = count > 0
-        ? 'Shift+click for range · Esc to exit'
-        : 'Ctrl/Cmd+A selects all shown';
+        ? 'Shift+click for a range · Delete closes · Esc exits'
+        : 'Ctrl/Cmd+A selects all shown · Esc exits';
     }
     this.updateBatchActionIcons();
     if (this.elements.selectAllBtn) {

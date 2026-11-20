@@ -80,7 +80,7 @@
           </div>
           <div class="setting-control">
             <div class="slider-control">
-              <span id="popupWidthValue" class="slider-value">800</span>
+              <span id="popupWidthValue" class="slider-value">800px</span>
               <div class="slider-wrapper">
                 <input type="range" id="popupWidth" class="slider" min="400" max="800" step="50" value="800">
               </div>
@@ -130,7 +130,7 @@
         <div class="setting-row">
           <div class="setting-info">
             <div class="setting-label">Keyboard Navigation</div>
-            <div class="setting-desc">Use arrow keys to navigate between tabs</div>
+            <div class="setting-desc">Switch tabs with ←/→, Home and End; Enter closes the popup</div>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -169,7 +169,28 @@
             </label>
           </div>
         </div>
-</div>
+      </div>
+
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="6" width="20" height="12" rx="2"/>
+              <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>
+            </svg>
+          </div>
+          <h2 class="card-title">Shortcuts in the popup</h2>
+        </div>
+        <dl class="shortcut-list">
+          <div><dt><kbd>Type</kbd></dt><dd>Start searching tabs (Enter opens the first match)</dd></div>
+          <div><dt><kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd></dt><dd>Switch tabs (needs Keyboard Navigation)</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>Close menu → clear search → leave selection</dd></div>
+          <div><dt><kbd>Ctrl/⌘</kbd>+<kbd>Click</kbd></dt><dd>Select tabs; <kbd>Shift</kbd>+<kbd>Click</kbd> selects a range</dd></div>
+          <div><dt><kbd>Ctrl/⌘</kbd>+<kbd>A</kbd></dt><dd>Select all shown tabs</dd></div>
+          <div><dt><kbd>Delete</kbd></dt><dd>Close selected tabs</dd></div>
+          <div><dt>Middle-click</dt><dd>Close a tab</dd></div>
+        </dl>
+      </div>
 
       <div class="settings-card actions-card">
         <div class="card-header">
