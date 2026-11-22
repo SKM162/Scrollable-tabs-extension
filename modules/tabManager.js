@@ -526,7 +526,7 @@ export class TabManager {
     let groupTitle = label;
     let groupColor = null;
 
-    if (!isPinned && groupTabs.length > 0 && groupTabs[0].groupId && chrome.tabGroups) {
+    if (!isPinned && groupTabs.length > 0 && groupTabs[0].groupId && groupTabs[0].groupId !== NO_GROUP && chrome.tabGroups) {
       try {
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Group query timeout')), 3000)

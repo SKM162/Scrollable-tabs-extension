@@ -30,6 +30,9 @@ import { installErrorLog } from '../utils/errorLog.js';
 
 installErrorLog('popup');
 
+/** chrome.tabGroups.TAB_GROUP_ID_NONE (-1) */
+const NO_GROUP = chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
+
 class TabNavigator {
   constructor() {
     this.settings = { ...DEFAULT_SETTINGS };
@@ -92,6 +95,7 @@ class TabNavigator {
       selectionBar: $('#selectionBar'),
       selectAllBtn: $('#selectAllBtn'),
       deselectAllBtn: $('#deselectAllBtn'),
+      batchFrontBtn: $('#batchFrontBtn'),
       batchCloseBtn: $('#batchCloseBtn'),
       batchMuteBtn: $('#batchMuteBtn'),
       batchPinBtn: $('#batchPinBtn'),
@@ -141,6 +145,7 @@ class TabNavigator {
     setIcon(this.elements.bugReportBtn, 'BUG');
     setIcon(this.elements.selectAllBtn, 'SELECT_ALL');
     setIcon(this.elements.deselectAllBtn, 'DESELECT_ALL');
+    setIcon(this.elements.batchFrontBtn, 'MOVE_TO_FRONT');
     setIcon(this.elements.batchCloseBtn, 'CLOSE_TABS');
     // Same icons as the per-tab dropdown menu; mute/pin switch to unmute/unpin
     // in updateBatchActionIcons() when every selected tab is already muted/pinned
@@ -203,6 +208,8 @@ class TabNavigator {
         this.updateSelectionInfo();
       },
       onSelectionModeChange: (isActive) => {
+        // Per-tab menus are hidden in selection mode; don't leave one open
+        if (isActive) this.dropdownManager?.closeAll();
         this.elements.popupContainer.classList.toggle(CLASSES.SELECTION_MODE, isActive);
         this.elements.selectionModeBtn?.classList.toggle(CLASSES.ACTIVE, isActive);
         this.elements.selectionModeBtn?.setAttribute('aria-pressed', String(isActive));
@@ -348,6 +355,7 @@ class TabNavigator {
       e.stopPropagation();
       this.batchCloseSelected();
     });
+    this.elements.batchFrontBtn?.addEventListener('click', () => this.batchMoveToFront());
     this.elements.batchMuteBtn?.addEventListener('click', () => this.batchMuteSelected());
     this.elements.batchPinBtn?.addEventListener('click', () => this.batchPinSelected());
     this.elements.batchWindowBtn?.addEventListener('click', () => this.batchMoveToWindow());
@@ -1043,6 +1051,44 @@ class TabNavigator {
     }
     showMessage(`${tabs.length - failed} tab${tabs.length === 1 ? '' : 's'} ${allPinned ? 'unpinned' : 'pinned'}` +
       (failed ? ` · ${failed} failed` : ''), failed ? 'error' : 'success');
+  }
+
+  /**
+   * Move the selected tabs to the front of the window, right after the pinned
+   * tabs, keeping their current relative order. Pinned tabs are already at the
+   * front and are left where they are. A tab can only be at the front outside
+   * its tab group (groups are contiguous), so moved tabs are ungrouped.
+   */
+  async batchMoveToFront() {
+    const tabs = (await this._freshSelection()).sort((a, b) => a.index - b.index);
+    const movable = tabs.filter(t => !t.pinned);
+    const pinnedSkipped = tabs.length - movable.length;
+    if (movable.length === 0) {
+      return showMessage(tabs.length ? 'Pinned tabs are already at the front' : 'No tabs selected', 'error');
+    }
+    const ids = movable.map(t => t.id);
+    const ungrouped = movable.filter(t => t.groupId !== NO_GROUP).length;
+    try {
+      const windowId = movable[0].windowId;
+      const pinned = await chrome.tabs.query({ windowId, pinned: true });
+      await withTabEditRetry(() => chrome.tabs.move(ids, { windowId, index: pinned.length }));
+      // Chrome can keep a moved tab in its group, or put it into a group that
+      // now starts at the front; neither is "at the front", so ungroup them.
+      const after = await Promise.all(ids.map(id => chrome.tabs.get(id).catch(() => null)));
+      const stillGrouped = after.filter(t => t && t.groupId !== NO_GROUP).map(t => t.id);
+      if (stillGrouped.length) await withTabEditRetry(() => chrome.tabs.ungroup(stillGrouped));
+
+      let msg = `${movable.length} tab${movable.length === 1 ? '' : 's'} moved to the front`;
+      if (ungrouped) msg += ` (${ungrouped} removed from a group)`;
+      if (pinnedSkipped) msg += ` · ${pinnedSkipped} pinned left as is`;
+      showMessage(msg, 'success');
+    } catch (err) {
+      console.error('Move to front failed:', err);
+      showMessage('Could not move tabs to the front', 'error');
+    }
+    // Show the result: the moved tabs now start the strip (after pinned tabs)
+    this._scrollToStartAfterRender = true;
+    await this.refreshTabList(false, true);
   }
 
   async batchMoveToWindow() {

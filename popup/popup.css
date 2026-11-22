@@ -1237,10 +1237,14 @@ body {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .selection-hint {
+  /* Gives way first when the bar is narrow */
+  flex-shrink: 100;
   font-size: 11px;
   color: var(--text-secondary);
   overflow: hidden;
@@ -1261,6 +1265,12 @@ body {
 
 .popup-container.selection-mode .selection-bar {
   display: flex;
+}
+
+/* Selection mode: a click anywhere on a tab selects it, so the per-tab menu
+   button is hidden (its menu duplicated the toolbar and got clipped by it) */
+.popup-container.selection-mode .tab-dropdown-btn {
+  display: none;
 }
 
 .selection-bar-divider {
@@ -1603,6 +1613,7 @@ button.tab-counter {
 .selection-bar.empty #batchMuteBtn,
 .selection-bar.empty #batchPinBtn,
 .selection-bar.empty #batchWindowBtn,
+.selection-bar.empty #batchFrontBtn,
 .selection-bar.empty #deselectAllBtn {
   opacity: 0.35;
   pointer-events: none;
@@ -1661,5 +1672,12 @@ button.tab-counter {
   .tab-item:hover {
     transition: none;
     transform: none;
+  }
+}
+
+/* Narrow popups: drop the shortcut hint so "N of M selected" stays readable */
+@media (max-width: 600px) {
+  .selection-hint {
+    display: none;
   }
 }
