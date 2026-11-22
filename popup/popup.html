@@ -64,16 +64,36 @@
     <div class="tab-container" id="tabContainer">
       <!-- Tabs will be rendered here -->
     </div>
-    <div class="info-bar">
-      <div class="current-tab-info" id="currentTabInfo">
-        <div class="info-label">Current Tab</div>
-        <div class="current-tab-title" id="currentTabTitle">Loading...</div>
-        <div class="current-tab-url" id="currentTabUrl"></div>
+    <!-- Selection mode toolbar: its own row, so the info bar below (tab info,
+         navigation, counter) stays fully usable while selecting -->
+    <div class="selection-bar" id="selectionBar" role="toolbar" aria-label="Selected tabs">
+      <span class="selection-count" id="selectionCount">0</span>
+      <div class="selection-summary">
+        <span class="selection-summary-text" id="selectionSummary">Click tabs to select</span>
+        <span class="selection-hint" id="selectionHint">Ctrl/Cmd+A selects all shown · Esc exits</span>
       </div>
-      <div class="hovered-tab-info" id="hoveredTabInfo">
-        <div class="info-label">Hovered</div>
-        <div class="hovered-tab-title" id="hoveredTabTitle"></div>
-        <div class="hovered-tab-url" id="hoveredTabUrl"></div>
+      <button class="selection-action-btn" id="selectAllBtn" title="Select all tabs"></button>
+      <button class="selection-action-btn" id="deselectAllBtn" title="Deselect all"></button>
+      <div class="selection-bar-divider"></div>
+      <button class="selection-action-btn" id="batchCloseBtn" title="Close selected tabs"></button>
+      <button class="selection-action-btn" id="batchMuteBtn" title="Mute/Unmute selected tabs"></button>
+      <button class="selection-action-btn" id="batchPinBtn" title="Pin/Unpin selected tabs"></button>
+      <button class="selection-action-btn" id="batchWindowBtn" title="Move selected to new window"></button>
+    </div>
+    <div class="info-bar">
+      <!-- Current and hovered tab share one slot: the hovered tab is shown while
+           the pointer is over a tab, the current tab otherwise -->
+      <div class="tab-info-slot" id="tabInfoSlot">
+        <div class="current-tab-info" id="currentTabInfo" title="Scroll to current tab">
+          <div class="info-label">Current Tab</div>
+          <div class="current-tab-title" id="currentTabTitle">Loading...</div>
+          <div class="current-tab-url" id="currentTabUrl"></div>
+        </div>
+        <div class="hovered-tab-info" id="hoveredTabInfo" aria-hidden="true">
+          <div class="info-label">Hovered</div>
+          <div class="hovered-tab-title" id="hoveredTabTitle"></div>
+          <div class="hovered-tab-url" id="hoveredTabUrl"></div>
+        </div>
       </div>
       <div class="tab-counter-wrapper">
         <button class="nav-btn-inline" id="scrollFirstBtn" title="Scroll to first" aria-label="Scroll to first">⏮</button>
@@ -84,16 +104,6 @@
           <span class="tab-counter-icon"></span>
           <span id="tabCounter">On tab 0 of 0</span>
         </button>
-      </div>
-      <div class="selection-bar" id="selectionBar" role="toolbar" aria-label="Selected tabs">
-        <span class="selection-count" id="selectionCount">0</span>
-        <button class="selection-action-btn" id="selectAllBtn" title="Select all tabs"></button>
-        <button class="selection-action-btn" id="deselectAllBtn" title="Deselect all"></button>
-        <div class="selection-bar-divider"></div>
-        <button class="selection-action-btn" id="batchCloseBtn" title="Close selected tabs"></button>
-        <button class="selection-action-btn" id="batchMuteBtn" title="Mute/Unmute selected tabs"></button>
-        <button class="selection-action-btn" id="batchPinBtn" title="Pin/Unpin selected tabs"></button>
-        <button class="selection-action-btn" id="batchWindowBtn" title="Move selected to new window"></button>
       </div>
     </div>
   </div>

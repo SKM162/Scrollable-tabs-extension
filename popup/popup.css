@@ -143,6 +143,8 @@ body {
 }
 
 .tab-container {
+  /* Shift+click (range select) must not highlight tab titles as text */
+  user-select: none;
   flex: 1 1 auto;
   display: flex;
   overflow-x: auto;
@@ -691,12 +693,38 @@ body {
   pointer-events: auto;
 }
 
-.current-tab-info {
+/* Current and hovered tab info are stacked in the same grid cell; only one is
+   visible at a time, so the bar never changes size while hovering */
+.tab-info-slot {
   flex: 1;
+  display: grid;
+  min-width: 0;
+}
+
+.current-tab-info,
+.hovered-tab-info {
+  grid-area: 1 / 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+.current-tab-info {
+  cursor: pointer;
+}
+
+.hovered-tab-info,
+.tab-info-slot.hovering .current-tab-info {
+  visibility: hidden;
+}
+
+.tab-info-slot.hovering .hovered-tab-info {
+  visibility: visible;
+}
+
+.hovered-tab-info .info-label {
+  color: var(--accent-color);
 }
 
 .tab-counter-wrapper {
@@ -729,14 +757,6 @@ body {
   transform: scale(1.05);
 }
 
-.hovered-tab-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
 .info-label {
   font-size: 9px;
   font-weight: 600;
@@ -763,16 +783,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.hovered-tab-info {
-  border-left: 2px solid var(--border-color);
-  padding-left: 12px;
-}
-
-.hovered-tab-info:empty,
-.hovered-tab-info:has(.hovered-tab-title:empty) {
-  display: none;
 }
 
 .tab-counter {
@@ -1205,22 +1215,47 @@ body {
   display: none;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 3px 8px;
   background: var(--bg-secondary);
-  border-left: 2px solid var(--accent-color);
+  border-top: 2px solid var(--accent-color);
   flex-shrink: 0;
-  margin-left: 8px;
   animation: selectionBarSlideIn 0.2s ease;
+}
+
+.selection-summary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-left: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.selection-summary-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.selection-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 @keyframes selectionBarSlideIn {
   from {
     opacity: 0;
-    transform: translateX(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
@@ -1541,19 +1576,6 @@ button:focus-visible,
 button.tab-counter {
   border: none;
   font-family: inherit;
-}
-
-/* Selection mode: the action bar replaces the navigation cluster so it fits
-   at the narrowest popup width */
-.popup-container.selection-mode .tab-counter-wrapper,
-.popup-container.selection-mode .hovered-tab-info {
-  display: none !important;
-}
-
-.popup-container.selection-mode .selection-bar {
-  margin-left: auto;
-  border-radius: 6px;
-  border: 1px solid var(--accent-color);
 }
 
 .selection-count {

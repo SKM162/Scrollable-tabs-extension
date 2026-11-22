@@ -86,6 +86,9 @@ class TabNavigator {
       bugReportBtn: $(SELECTORS.BUG_REPORT_BTN),
       searchIcon: $('#searchIcon'),
       selectionCount: $('#selectionCount'),
+      selectionSummary: $('#selectionSummary'),
+      selectionHint: $('#selectionHint'),
+      tabInfoSlot: $('#tabInfoSlot'),
       selectionBar: $('#selectionBar'),
       selectAllBtn: $('#selectAllBtn'),
       deselectAllBtn: $('#deselectAllBtn'),
@@ -470,6 +473,10 @@ class TabNavigator {
     });
 
     // Track user interaction so we stop auto-centering once they've moved around
+    // Safety net: if the hovered tab's element is removed or replaced (closed,
+    // re-rendered) its mouseleave never fires, so also reset when leaving the strip
+    this.elements.tabContainer.addEventListener('mouseleave', () => this.clearHoveredTabInfo());
+
     const markInteracted = () => { this._userInteracted = true; };
     this.elements.tabContainer.addEventListener('wheel', markInteracted, { passive: true });
     this.elements.tabContainer.addEventListener('pointerdown', markInteracted);
@@ -783,10 +790,6 @@ class TabNavigator {
   }
 
   updateCurrentTabInfo() {
-    if (this.selectionManager?.isInSelectionMode()) {
-      this.updateSelectionInfo();
-      return;
-    }
     const info = this.tabManager.getCurrentTabInfo();
     if (this.elements.currentTabTitle) {
       this.elements.currentTabTitle.textContent = info.title;
@@ -801,14 +804,12 @@ class TabNavigator {
     if (info) {
       this.elements.hoveredTabTitle.textContent = info.title;
       this.elements.hoveredTabUrl.textContent = info.hostname;
-      this.elements.hoveredTabInfo.style.display = 'flex';
+      this.elements.tabInfoSlot?.classList.add('hovering');
     }
   }
 
   clearHoveredTabInfo() {
-    this.elements.hoveredTabTitle.textContent = '';
-    this.elements.hoveredTabUrl.textContent = '';
-    this.elements.hoveredTabInfo.style.display = 'none';
+    this.elements.tabInfoSlot?.classList.remove('hovering');
   }
 
   updateTabCounter() {
@@ -884,40 +885,37 @@ class TabNavigator {
     return this.tabManager.getVisibleTabs().filter(t => this.selectionManager.isSelected(t.id));
   }
 
+  /** Update the selection toolbar (the info bar keeps showing the current tab) */
   updateSelectionInfo() {
-    const infoLabel = this.elements.currentTabInfo?.querySelector('.info-label');
-    if (!this.selectionManager?.isInSelectionMode()) {
-      if (infoLabel) infoLabel.textContent = 'Current Tab';
-      const info = this.tabManager.getCurrentTabInfo();
-      if (this.elements.currentTabTitle) this.elements.currentTabTitle.textContent = info.title;
-      if (this.elements.currentTabUrl) this.elements.currentTabUrl.textContent = info.hostname;
-      return;
-    }
+    if (!this.selectionManager?.isInSelectionMode()) return;
 
     const count = this.selectionManager.getSelectionCount();
     const visibleCount = this.tabManager.getVisibleTabs().length;
+    const filtered = !!this.tabManager.hasActiveFilters();
+    const plural = visibleCount === 1 ? '' : 's';
+
     if (this.elements.selectionCount) {
       this.elements.selectionCount.textContent = String(count);
       this.elements.selectionCount.title = `${count} selected`;
     }
     this.elements.selectionBar?.classList.toggle('empty', count === 0);
-    const filtered = this.tabManager.hasActiveFilters();
-    if (infoLabel) infoLabel.textContent = filtered ? 'Selection Mode · filtered' : 'Selection Mode';
-    if (this.elements.currentTabTitle) {
-      this.elements.currentTabTitle.textContent = count > 0
-        ? `${count} of ${visibleCount} tab${visibleCount === 1 ? '' : 's'} selected`
-        : 'Click tabs to select';
+    if (this.elements.selectionSummary) {
+      this.elements.selectionSummary.textContent = count > 0
+        ? `${count} of ${visibleCount}${filtered ? ' shown' : ''} selected`
+        : `Click tabs to select${filtered ? ' (filtered)' : ''}`;
     }
-    if (this.elements.currentTabUrl) {
-      this.elements.currentTabUrl.textContent = count > 0
+    if (this.elements.selectionHint) {
+      const hint = count > 0
         ? 'Shift+click for a range · Delete closes · Esc exits'
         : 'Ctrl/Cmd+A selects all shown · Esc exits';
+      this.elements.selectionHint.textContent = hint;
+      this.elements.selectionHint.title = hint;
     }
     this.updateBatchActionIcons();
     if (this.elements.selectAllBtn) {
       this.elements.selectAllBtn.title = filtered
-        ? `Select all ${visibleCount} filtered tabs`
-        : `Select all ${visibleCount} tabs`;
+        ? `Select all ${visibleCount} filtered tab${plural}`
+        : `Select all ${visibleCount} tab${plural}`;
     }
   }
 
