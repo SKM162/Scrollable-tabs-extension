@@ -1,18 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Scrollable Tabs",
-  "version": "0.4.0",
-  "description": "Extension port for scrollable tab strip experimental feature of chrome",
+  "version": "0.5.0",
+  "description": "A horizontal, scrollable strip of all your tabs: search, filter, multi-select and manage them from the toolbar.",
+  "minimum_chrome_version": "104",
+  "homepage_url": "https://skm162.github.io/Scrollable-tabs-extension/",
   "permissions": [
     "tabs",
     "storage",
     "tabGroups",
     "favicon"
   ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {

@@ -9,20 +9,24 @@ Made with AI and human touch <3.
 
 ## Features
 
-- **Horizontal scrollable list** of all tabs
+- **Horizontal scrollable list** of all tabs, with pinned tabs and tab groups (names and colours)
 - **Auto-focus on active tab** when popup opens
 - **Click to switch** tabs
 - **Real-time synchronization** with browser tab changes
-- **Visual indicators** for pinned tabs and audio playing
+- **Visual indicators** for audio playing and muted tabs
+- **Hover info**: hovering a tab shows its full title and site in place of the current tab's
 - **Search as you type**: start typing anywhere in the popup; Enter opens the first match
 - **Filter tabs** by audio (playing or muted), pinned, grouped, or ungrouped status
-- **Multi-select** (Ctrl/Cmd+click, Shift+click for ranges) with batch close, mute, pin and move to a new window
+- **Multi-select** (Ctrl/Cmd+click, Shift+click for ranges, Ctrl/Cmd+A) with batch close, mute, pin, **move to front** (right after pinned tabs) and move to a new window. Batch actions only touch tabs you can see, and closing many tabs asks for confirmation
 - **Middle-click** a tab to close it; collapsed groups stay collapsed while the popup is open
+- **Light / dark / system theme** and adjustable popup width, scroll speed and display options
 - **Bug report / feedback form** that opens a pre-filled GitHub issue (no data is sent until you submit it there)
 
 Keyboard shortcuts are listed on the settings page.
 
-![screenshot of extension](https://github.com/SKM162/Scrollable-tabs-extension/blob/main/assets/Scrollable%20tab%20peek.png)
+![screenshot of extension](store/screenshot-1-strip.png)
+
+Website: https://skm162.github.io/Scrollable-tabs-extension/ · [Privacy policy](https://skm162.github.io/Scrollable-tabs-extension/privacy.html)
 
 ## Installation
 
@@ -37,6 +41,12 @@ Official reference: https://developer.chrome.com/docs/extensions/get-started/tut
 2. Enable "Developer mode" (toggle icon at top right)
 3. Click "Load unpacked" (at top left)
 4. Select the extension directory cloned or downloaded.
+
+### Build the Chrome Web Store package
+```sh
+./scripts/package.sh   # -> dist/scrollable-tabs-<version>.zip (runtime files only)
+```
+Listing text, permission justifications and screenshots are in [`store/`](store/listing.md).
 
 ## Usage
 
@@ -69,9 +79,10 @@ Click the extension icon in the Chrome toolbar to open the tab navigator popup. 
 **Phase 4 - ✅ Complete**
 - filtering tabs
 
-**Phase 5:**
-- tab reordering
-- tab search
+**Phase 5 - in progress**
+- ✅ tab search
+- ✅ multi-select with batch actions (close, mute, pin, move to front, move to new window)
+- tab reordering (move to front done)
 - AI tab organization
 
 ## Contributions are welcomed!
@@ -81,4 +92,4 @@ Default thumbnail for tabs - [By Sarang - Own work, Public Domain](https://commo
 
 ## License
 
-MIT
+Apache License 2.0 — see [LICENSE](LICENSE).
