@@ -22,31 +22,30 @@
 
   <main>
     <h1>Privacy Policy</h1>
-    <p class="last-updated">Last updated: February 8, 2025</p>
+    <p class="last-updated">Last updated: November 23, 2026</p>
 
     <div class="section">
       <h2>Overview</h2>
-      <p>Scrollable Tabs is committed to protecting your privacy. This Privacy Policy explains how we handle information when you use our Chrome extension.</p>
+      <p>Scrollable Tabs is committed to protecting your privacy. This Privacy Policy explains how the extension handles information when you use it.</p>
       <div class="highlight-box">
-        <p><strong>TL;DR:</strong> We don't collect, store, or transmit any personal data. All processing happens locally on your device.</p>
+        <p><strong>TL;DR:</strong> We don't collect, sell or transmit any of your data. Scrollable Tabs has no servers, no analytics and no tracking. Everything happens inside your browser.</p>
       </div>
     </div>
 
     <div class="section">
       <h2>Information We Access</h2>
-      <p>To provide the core functionality of the extension, we access the following information <strong>locally within your browser</strong>:</p>
+      <p>To show and manage your tabs, the extension reads the following information <strong>locally within your browser</strong>:</p>
       <ul>
-        <li><strong>Tab information:</strong> Titles, URLs, favicons, and tab IDs of your open tabs</li>
-        <li><strong>Tab groups:</strong> Group names, colors, and which tabs belong to which groups</li>
-        <li><strong>Audio status:</strong> Whether a tab is currently playing audio</li>
-        <li><strong>Pinned status:</strong> Whether a tab is pinned</li>
+        <li><strong>Tab information:</strong> Titles, URLs, IDs and state (active, pinned, playing audio, muted) of the tabs in your windows</li>
+        <li><strong>Tab groups:</strong> Group names, colours, and which tabs belong to which groups</li>
+        <li><strong>Site icons:</strong> Favicons, read from Chrome's own icon cache. The extension never requests icons from the websites themselves</li>
       </ul>
-      <p>This information is only accessed to display your tabs in the extension popup and is never stored or transmitted.</p>
+      <p>This information is only used to display and manage your tabs in the popup. It is never stored or sent anywhere.</p>
     </div>
 
     <div class="section">
       <h2>Information We Do NOT Collect</h2>
-      <p>We do not collect or have access to data that is not related to the extension</p>
+      <p>We do not collect or have access to data that is not related to the extension.</p>
       <p>To name a few:</p>
       <ul>
         <li>Personal identification information</li>
@@ -54,32 +53,41 @@
         <li>Login credentials or passwords</li>
         <li>Payment information</li>
         <li>Location data</li>
-        <li>Device information</li>
-        <li>Any data from web pages you visit</li>
+        <li>Any content of the web pages you visit</li>
       </ul>
     </div>
 
     <div class="section">
       <h2>Data Storage</h2>
-      <p>The only data stored by this extension is:</p>
+      <p>The extension stores only the following, using Chrome's storage API:</p>
       <ul>
-        <li><strong>User preferences:</strong> Your settings (popup width, toggle options, etc.) are stored locally using Chrome's storage API</li>
+        <li><strong>Your settings</strong> (theme, popup width, display and navigation options). These are saved with Chrome's sync storage, so if you use Chrome Sync they follow your Google account to your other computers, the same as other extension settings. They contain no tab or browsing information.</li>
+        <li><strong>Collapsed tab groups</strong>, so groups you collapse stay collapsed. Kept only until you close Chrome.</li>
+        <li><strong>An unsent bug report draft</strong>, if you start one, so you don't lose it. Kept on this device and removed once you submit the report.</li>
+        <li><strong>A short log of recent extension errors</strong> (at most 20 entries, with web addresses removed). Kept on this device and only used if you choose to include it in a bug report.</li>
       </ul>
-      <p>This data never leaves your device and is only used to remember your preferences between sessions.</p>
+      <p>None of this is sent to us or to anyone else.</p>
+    </div>
+
+    <div class="section">
+      <h2>Bug Reports and Feedback</h2>
+      <p>The "Report a bug" form does not send anything by itself. It prepares a GitHub issue and opens it in a new tab, where you can review the full text before deciding whether to submit it with your own GitHub account. GitHub issues on this project are <strong>public</strong>.</p>
+      <p>You can choose to include basic diagnostics (extension and browser version, platform, tab and window counts, and your extension settings) and the recent error log. Tab titles and web addresses are never included.</p>
     </div>
 
     <div class="section">
       <h2>Third-Party Services</h2>
-      <p>We do not use any third-party analytics, tracking, or advertising services. The extension operates entirely within your browser without external communication.</p>
+      <p>We do not use any third-party analytics, tracking, or advertising services. The extension makes no network requests of its own.</p>
     </div>
 
     <div class="section">
       <h2>Permissions Explained</h2>
-      <p>Our extension requests the following permissions:</p>
+      <p>The extension requests the following permissions:</p>
       <ul>
-        <li><strong>tabs:</strong> To read information about your open tabs (titles, URLs, favicons) and switch between them</li>
-        <li><strong>storage:</strong> To save your preferences locally</li>
-        <li><strong>tabGroups:</strong> To display and manage your Chrome tab groups</li>
+        <li><strong>tabs:</strong> To read your open tabs (titles, URLs, state) and to switch, close, pin, mute, reload, duplicate and move them when you ask</li>
+        <li><strong>tabGroups:</strong> To display your tab groups with their names and colours</li>
+        <li><strong>storage:</strong> To save your settings and the items listed under Data Storage</li>
+        <li><strong>favicon:</strong> To show each tab's icon from Chrome's own icon cache</li>
       </ul>
     </div>
 
@@ -103,10 +111,10 @@
       </p>
       <div class="footer-links">
         <a href="https://github.com/SKM162/Scrollable-tabs-extension">GitHub</a>
-        <a href="#">Chrome Web Store</a>
+        <a href="https://chromewebstore.google.com/detail/scrollable-tabs/beneiafglkilogdikodimmbmnkbpnnba">Chrome Web Store</a>
         <a href="LICENSE.txt">License</a>
       </div>
-      <p class="copyright">Apache License 2.0 © 2025</p>
+      <p class="copyright">Apache License 2.0 © 2025–2026</p>
     </div>
   </footer>
 </body>
