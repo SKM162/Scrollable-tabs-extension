@@ -286,10 +286,11 @@ export class TabManager {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '16px',
+        // Compact enough to fit the strip even with the selection toolbar shown
+        gap: '8px',
         width: '100%',
         minWidth: '0',
-        padding: '20px'
+        padding: '6px 20px'
       }
     });
 
@@ -309,7 +310,7 @@ export class TabManager {
       const ghostWrapper = createElement('div', {
         style: {
           width: `${boxWidth}px`,
-          height: '64px',
+          height: '52px',
           background: 'var(--ghost-box-bg)',
           borderRadius: '5px',
           boxShadow: 'var(--ghost-box-shadow)',
@@ -327,7 +328,7 @@ export class TabManager {
         position: 'absolute',
         width: '40px',
         height: '40px',
-        top: '12px',
+        top: '6px',
         left: '0px',
         animation: `ghostFade 8s ease-in-out infinite`
       }
@@ -363,8 +364,7 @@ export class TabManager {
         gap: '8px',
         background: 'var(--ghost-icon-wrapper-bg)',
         borderRadius: '6px',
-        padding: '8px 12px',
-        marginTop: '4px'
+        padding: '5px 12px'
       }
     });
 
@@ -379,8 +379,9 @@ export class TabManager {
     });
 
     const noResultsText = createElement('span', {
-      textContent: 'No tabs found for the applied filter',
+      textContent: 'No tabs match the filter',
       style: {
+        whiteSpace: 'nowrap',
         color: 'var(--text-primary)',
         fontSize: '13px'
       }
@@ -388,7 +389,8 @@ export class TabManager {
 
     const clearBtn = createElement('button', {
       className: 'no-results-clear',
-      textContent: 'Clear filters'
+      textContent: 'Clear filters',
+      style: { whiteSpace: 'nowrap' }
     });
     clearBtn.addEventListener('click', (e) => {
       e.stopPropagation();
