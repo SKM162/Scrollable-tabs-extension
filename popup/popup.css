@@ -330,6 +330,8 @@ body {
 
 .tab-item.closing {
   animation: tabFadeOut 0.2s ease forwards;
+  /* A closing tab must not take clicks (a second close could hit another tab) */
+  pointer-events: none;
 }
 
 @keyframes tabFadeOut {

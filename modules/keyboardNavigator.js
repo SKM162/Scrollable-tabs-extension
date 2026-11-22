@@ -19,7 +19,7 @@ import { KEYS } from './constants.js';
  * @param {Function} [options.onSelectAll] - Ctrl/Cmd+A: select all visible tabs
  * @param {Function} [options.onEscape] - Escape: return true if it was handled
  *   (e.g. selection mode exited) so the popup isn't closed
- * @param {Function} [options.onDelete] - Delete/Backspace: return true if handled
+ * @param {Function} [options.onDelete] - Delete (not Backspace, not auto-repeat): return true if handled
  * @param {Function} [options.onTypeToSearch] - Called with a printable key typed
  *   outside a text field, to start a search
  * @returns {Function} Keyboard event handler
@@ -58,9 +58,18 @@ export function createKeyboardNavigator({
     // Leave other modified shortcuts (Cmd/Ctrl/Alt + key) to the browser
     if (e.altKey || e.ctrlKey || e.metaKey) return;
 
-    if ((e.key === KEYS.DELETE || e.key === KEYS.BACKSPACE) && onDelete?.()) {
-      e.preventDefault();
-      return;
+    // Only Delete closes selected tabs. Backspace is too easy to press out of
+    // habit (e.g. to edit the search after Esc left the search box), and a held
+    // key's auto-repeat must not click through the "confirm close" step.
+    if (e.key === KEYS.DELETE) {
+      if (e.repeat) {
+        e.preventDefault();
+        return;
+      }
+      if (onDelete?.()) {
+        e.preventDefault();
+        return;
+      }
     }
 
     // A printable character starts a search (buttons keep Space for clicking)

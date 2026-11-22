@@ -619,6 +619,13 @@ class TabNavigator {
    * @param {chrome.tabs.Tab} tab
    */
   async closeTab(tab) {
+    // Ignore repeat requests for a tab that is already closing (e.g. a quick
+    // double middle-click on its fading-out element). A second remove() would
+    // fail and the fallback below could then close the neighbouring tab.
+    if (this._closingTabIds.has(tab.id)) return;
+    // Ids the popup already knows about: a tab Chrome replaced (discard /
+    // prerender) always gets a NEW id, so none of these can be its replacement.
+    const knownIds = new Set(this.tabManager.getTabs().map(t => t.id));
     this._closingTabIds.add(tab.id);
     this.selectionManager.deselectTab(tab.id);
     this._removeTabElement(tab.id);
@@ -633,11 +640,12 @@ class TabNavigator {
       try {
         const current = await chrome.tabs.query({ windowId: tab.windowId });
         const replacement = current.find(t =>
-          t.id !== tab.id && t.index === tab.index && t.url === tab.url);
+          !knownIds.has(t.id) && t.index === tab.index && t.url === tab.url);
         if (replacement) {
           this._closingTabIds.add(replacement.id);
           await withTabEditRetry(() => chrome.tabs.remove(replacement.id));
           closed = true;
+          setTimeout(() => this._closingTabIds.delete(replacement.id), 1000);
         } else {
           console.error('Failed to close tab:', err);
         }
@@ -960,12 +968,16 @@ class TabNavigator {
     const needsConfirm = closesWindow || toClose.length >= 5;
     if (needsConfirm && !btn.classList.contains('confirming')) {
       btn.classList.add('confirming');
+      this._confirmArmedAt = Date.now();
       btn.textContent = closesWindow ? `Close all ${toClose.length} + window?` : `Close ${toClose.length}?`;
       btn.title = 'Click again to confirm';
       clearTimeout(this._confirmTimer);
       this._confirmTimer = setTimeout(() => this.cancelCloseConfirmation(), 4000);
       return;
     }
+    // A double-click (or a double-tap of Delete) must not arm AND confirm the
+    // close in one go: ignore the confirming press if it comes too quickly.
+    if (needsConfirm && Date.now() - (this._confirmArmedAt || 0) < 400) return;
     this.cancelCloseConfirmation();
 
     const ids = toClose.map(t => t.id);
